@@ -72,6 +72,8 @@ func Root() *Command {
 		completionCommand(),
 		configCommand(),
 		helpCommand(),
+		logCommand(),
+		serveCommand(),
 		versionCommand(),
 	}
 	return root

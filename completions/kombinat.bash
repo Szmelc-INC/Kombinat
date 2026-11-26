@@ -8,14 +8,15 @@ _kombinat() {
   done
   if [[ $cur == -* ]]; then
     case $p in
+      "log") words="--tail --after" ;;
     esac
     words+=" --json --no-color --help"
   else
     case $p in
-      "") words="completion config help version" ;;
+      "") words="completion config help log serve version" ;;
       "completion") words="bash zsh fish" ;;
       "config") words="show" ;;
-      "help") words="completion config help version" ;;
+      "help") words="completion config help log serve version" ;;
     esac
   fi
   mapfile -t COMPREPLY < <(compgen -W "$words" -- "$cur")

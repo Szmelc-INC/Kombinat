@@ -40,3 +40,18 @@ Every deviation from `AGENTS.md`, `docs/CONVENTIONS.md` or a `PROMPTS/` brief â€
 - Context: `PROMPTS/CORE.md` asks for core config plus per-module defaults, merged and type-validated, without fixing file locations.
 - Decision: the Kombinat root is `KOMBINAT_ROOT`, else the working directory. Layers, later wins: built-in `core/config/core.default.toml` or `modules/NAME/config.default.toml`, then `config/NAME.toml` (tracked, team), then `config/NAME.local.toml` (gitignored, personal). The defaults are the schema: an override key must exist there with the same TOML type; tables merge, arrays and scalars replace. A core problem stops the command (exit 1, file and key named); a module problem leaves only that module out.
 - Consequence: no environment or flag layer per key yet; one arrives only when two real users need it. `kombinat config show` prints exactly what the core and modules see.
+
+## 9. SQLite driver dependency
+- Context: `PROMPTS/CORE.md` fixes SQLite in WAL mode; Go's standard library has `database/sql` but no SQLite driver, and the core builds with `CGO_ENABLED=0`.
+- Decision: `modernc.org/sqlite`, a pure-Go driver (the Go conventions name it), used only inside `core/store`. Migrations only move forward (`PRAGMA user_version`); a database newer than the core is refused, not touched. Triggers make `events` append-only at the database level.
+- Consequence: the binary stays static and cross-compiles for linux, darwin, windows and freebsd; exit plan â€” any `database/sql` SQLite driver drops in behind `store.Open`.
+
+## 10. API envelope, browser guard and port fallback
+- Context: `PROMPTS/CORE.md` asks for an HTTP JSON API on `127.0.0.1` and says a busy port is recorded in config; it leaves the response shape and browser threats open, and auth arrives only in phase 5.
+- Decision: every response is `{"ok":true,"data":...}` or `{"ok":false,"error":"..."}`. Before any route runs, the API refuses a foreign `Host` header (DNS rebinding), a foreign `Origin` header, and any state-changing request without `Content-Type: application/json` (no simple cross-site form posts); request bodies are strict JSON capped at 1 MiB. A busy port falls back to a free one, logged as `core.api.port_fallback` and recorded with the PID in the machine-written `var/run/api.json`, not in a human-edited TOML file, so comments in personal config are never rewritten.
+- Consequence: clients find the live port in `var/run/api.json`; `api.port = 0` always picks a free port, which tests use.
+
+## 11. One code path for CLI and API
+- Context: the CLI and the API must not grow two implementations of one action.
+- Decision: both call the same core packages (`config`, `store`, `events`, later the loader) on the same SQLite file; the CLI opens the store directly and works without a running server, WAL keeps CLI and server consistent. CLI actions log the actor `cli`, API actions `api` until phase 5 names token actors.
+- Consequence: `kombinat log` and `GET /api/events` always agree; a CLI-only command is a bug unless it is local plumbing (`serve`, `completion`, `help`, `version`).
