@@ -114,13 +114,13 @@ func newFixture() fixture {
 
 func TestAddThenListEvent(t *testing.T) {
 	f := newFixture()
-	code, env := do(t, f.h, "POST", "/api/events", `{"action":"core.note","summary":"hi","payload":{"token":"x"}}`, nil)
+	code, env := do(t, f.h, "POST", "/api/events", `{"action":"smoke.note","summary":"hi","payload":{"token":"x"}}`, nil)
 	if code != http.StatusCreated || !env.OK {
 		t.Fatalf("add: %d %+v", code, env)
 	}
 	code, env = do(t, f.h, "GET", "/api/events?limit=1", "", nil)
 	list, _ := json.Marshal(env.Data)
-	if code != http.StatusOK || !strings.Contains(string(list), `"action":"core.note"`) || !strings.Contains(string(list), `"actor":"api"`) {
+	if code != http.StatusOK || !strings.Contains(string(list), `"action":"smoke.note"`) || !strings.Contains(string(list), `"actor":"api"`) {
 		t.Fatalf("list: %d %s", code, list)
 	}
 	if strings.Contains(string(list), `"x"`) {
@@ -147,7 +147,7 @@ func TestAuth(t *testing.T) {
 	if len(f.log.list) != 0 {
 		t.Fatalf("an unauthenticated call changed state: %v", f.log.list)
 	}
-	code, _ := do(t, f.h, "POST", "/api/events", `{"action":"core.note"}`, map[string]string{"Authorization": "Bearer " + agentToken})
+	code, _ := do(t, f.h, "POST", "/api/events", `{"action":"smoke.note"}`, map[string]string{"Authorization": "Bearer " + agentToken})
 	if code != http.StatusCreated || f.log.list[0].Actor != "agent-1" {
 		t.Fatalf("per-actor token: %d %+v", code, f.log.list)
 	}
@@ -161,7 +161,7 @@ func TestRoutesAnswerTheRightStatus(t *testing.T) {
 	}{
 		{"GET", "/api/config", "", http.StatusOK},
 		{"GET", "/api/events", "", http.StatusOK},
-		{"POST", "/api/events", `{"action":"core.note"}`, http.StatusCreated},
+		{"POST", "/api/events", `{"action":"smoke.note"}`, http.StatusCreated},
 		{"GET", "/api/modules", "", http.StatusOK},
 		{"GET", "/api/modules/on", "", http.StatusOK},
 		{"GET", "/api/modules/off", "", http.StatusNotFound},
@@ -228,9 +228,10 @@ func TestRejections(t *testing.T) {
 		{"foreign host", "GET", "/api/events", "", map[string]string{"Host": "evil.example:2137"}, http.StatusForbidden},
 		{"foreign origin", "GET", "/api/events", "", map[string]string{"Origin": "http://evil.example"}, http.StatusForbidden},
 		{"no json content type", "POST", "/api/events", "x", map[string]string{"Content-Type": "text/plain"}, http.StatusUnsupportedMediaType},
-		{"unknown field", "POST", "/api/events", `{"action":"core.x","actor":"root"}`, nil, http.StatusBadRequest},
+		{"unknown field", "POST", "/api/events", `{"action":"smoke.x","actor":"root"}`, nil, http.StatusBadRequest},
 		{"bad action", "POST", "/api/events", `{"action":"x"}`, nil, http.StatusBadRequest},
-		{"trailing data", "POST", "/api/events", `{"action":"core.x"} {}`, nil, http.StatusBadRequest},
+		{"reserved namespace", "POST", "/api/events", `{"action":"core.module.enable"}`, nil, http.StatusForbidden},
+		{"trailing data", "POST", "/api/events", `{"action":"smoke.x"} {}`, nil, http.StatusBadRequest},
 		{"bad limit", "GET", "/api/events?limit=-1", "", nil, http.StatusBadRequest},
 	}
 	for _, c := range cases {
