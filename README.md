@@ -3,15 +3,15 @@
 **A very modular mix of a "Universe Command Center" and a "SkyNET" thing: one tiny core, everything else a module.**
 
 ```sh
-git clone https://github.com/CYBERSZP0NT/Kombinat-MkII.git
+git clone https://github.com/Szmelc-INC/Kombinat.git
 ```
 
-[![check](https://img.shields.io/github/actions/workflow/status/CYBERSZP0NT/Kombinat-MkII/check.yml?branch=main&label=check&logo=githubactions&logoColor=white)](https://github.com/CYBERSZP0NT/Kombinat-MkII/actions/workflows/check.yml)
-[![License: MIT](https://img.shields.io/github/license/CYBERSZP0NT/Kombinat-MkII?logo=opensourceinitiative&logoColor=white&color=105c5c)](LICENSE)
+[![check](https://img.shields.io/github/actions/workflow/status/Szmelc-INC/Kombinat/check.yml?branch=main&label=check&logo=githubactions&logoColor=white)](https://github.com/Szmelc-INC/Kombinat/actions/workflows/check.yml)
+[![License: MIT](https://img.shields.io/github/license/Szmelc-INC/Kombinat?logo=opensourceinitiative&logoColor=white&color=105c5c)](LICENSE)
 
 Kombinat — also known as "SkyNET", "Skajnet" or *"Centrum Dowodzenia Wszechświatem"* — is the modular command center of the Szmelc™ fleet: an absolute, emergent, modular multitool of all the tools. Modules, algorithms and everything else — because it is all connected. Normal people call it modern conventions, modular architecture and a toolkit for everything (especially everything related to running a Universe Command Center).
 
-Currently under [CYBERSZP0NT](https://github.com/CYBERSZP0NT), part of the [Szmelc™](https://szmelc.com) brand.
+Lives at [Szmelc-INC/Kombinat](https://github.com/Szmelc-INC/Kombinat), part of the [Szmelc™](https://szmelc.com) brand.
 
 **Team:** [Sernik](https://github.com/Sernik77) (CEO) · [Polski Kotek](https://github.com/PolskiKocurek) (CTO) · [Henderson](https://github.com/hajtuszko) (CDO)
 
