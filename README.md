@@ -31,9 +31,10 @@ Needs Go (the version in `go.mod`), `make` and `curl`; `jq`, `shellcheck` and `p
 ```sh
 make check                      # lint, build, unit tests, end-to-end smoke test
 export KOMBINAT_ROOT=$PWD       # the Kombinat root: modules/, config/, var/, secrets/
-bin/kombinat serve &            # API on 127.0.0.1:2137; creates secrets/api_token on first run
+bin/kombinat serve &            # API on 127.0.0.1:2138; creates secrets/api_token on first run
 bin/kombinat module enable hello
-curl -s -H "Authorization: Bearer $(cat secrets/api_token)" http://127.0.0.1:2137/api/modules/hello
+port=$(jq -r .port var/run/api.json)   # the live port, also after a busy-port fallback
+curl -s -H "Authorization: Bearer $(cat secrets/api_token)" "http://127.0.0.1:$port/api/modules/hello"
 bin/kombinat log --tail 1       # shows the core.module.enable event
 bin/kombinat module run hello Szmelc
 ```

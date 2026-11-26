@@ -49,7 +49,7 @@ Every deviation from `AGENTS.md`, `docs/CONVENTIONS.md` or a `PROMPTS/` brief â€
 ## 10. API envelope, browser guard and port fallback
 - Context: `PROMPTS/CORE.md` asks for an HTTP JSON API on `127.0.0.1` and says a busy port is recorded in config; it leaves the response shape and browser threats open, and auth arrives only in phase 5.
 - Decision: every response is `{"ok":true,"data":...}` or `{"ok":false,"error":"..."}`. Before any route runs, the API refuses a foreign `Host` header (DNS rebinding), a foreign `Origin` header, and any state-changing request without `Content-Type: application/json` (no simple cross-site form posts); request bodies are strict JSON capped at 1 MiB. A busy port falls back to a free one, logged as `core.api.port_fallback` and recorded with the PID in the machine-written `var/run/api.json`, not in a human-edited TOML file, so comments in personal config are never rewritten.
-- Consequence: clients find the live port in `var/run/api.json`; `api.port = 0` always picks a free port, which tests use.
+- Consequence: clients find the live port in `var/run/api.json`; `api.port = 0` always picks a free port, which tests use. The default port is 2138, not 2137: the private v1 serves on 2137, and both run side by side on the same machines while features are ported.
 
 ## 11. One code path for CLI and API
 - Context: the CLI and the API must not grow two implementations of one action.
