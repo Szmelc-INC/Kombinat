@@ -1,0 +1,71 @@
+{
+  "name": "memory5",
+  "display_name": "Memory 5",
+  "version": "0.1.0",
+  "description": "Hybrid search (full text plus optional vectors) over a configured file list, journals and user memories; redacts before indexing and returns results as framed data, never instructions.",
+  "depends": [],
+  "provides": {
+    "api": [
+      "memory5.query",
+      "memory5.status",
+      "memory5.index",
+      "memory5.memory.add",
+      "memory5.memory.list",
+      "memory5.memory.delete",
+      "memory5.journal.add",
+      "memory5.journal.list"
+    ],
+    "events": [
+      "memory5.indexed",
+      "memory5.queried",
+      "memory5.memory.added",
+      "memory5.memory.deleted",
+      "memory5.journal.added"
+    ],
+    "capabilities": [],
+    "config": [
+      "enabled",
+      "index.base",
+      "index.files",
+      "index.extensions",
+      "index.exclude_dirs",
+      "index.max_file_kb",
+      "index.max_files",
+      "index.chunk_bytes",
+      "index.budget_seconds",
+      "redact.assignments",
+      "redact.patterns",
+      "search.limit",
+      "search.max_limit",
+      "search.min_term_chars",
+      "search.prefix_min_chars",
+      "search.prefix_trim_chars",
+      "search.stopwords",
+      "search.min_similarity",
+      "search.rrf_k",
+      "search.candidates",
+      "embed.enabled",
+      "embed.command",
+      "embed.url",
+      "embed.model",
+      "embed.query_prefix",
+      "embed.batch",
+      "embed.timeout_seconds",
+      "embed.query_timeout_seconds",
+      "journal.max_bytes",
+      "journal.timezone",
+      "memory.max_bytes",
+      "output.locale"
+    ]
+  },
+  "entrypoints": {
+    "api": true,
+    "cli": true,
+    "ui": false,
+    "worker": false
+  },
+  "locales": [
+    "en",
+    "pl"
+  ]
+}
