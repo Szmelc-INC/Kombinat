@@ -1,0 +1,6 @@
+# <Display name> — exhaustive defaults.
+# Every key the code reads appears here (`AGENTS.md`: no hidden state); runtime values come from the core config store.
+enabled = false
+
+[module]
+# <key> = <default>  # <type> — <what it changes>

@@ -1,0 +1,20 @@
+{
+  "name": "<kebab-name>",
+  "display_name": "<Display Name>",
+  "version": "0.1.0",
+  "description": "<One sentence: what the module does.>",
+  "depends": [],
+  "provides": {
+    "api": [],
+    "events": [],
+    "capabilities": [],
+    "config": []
+  },
+  "entrypoints": {
+    "api": false,
+    "cli": false,
+    "ui": false,
+    "worker": false
+  },
+  "locales": ["en", "pl"]
+}
