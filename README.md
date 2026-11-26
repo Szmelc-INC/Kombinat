@@ -26,12 +26,13 @@ Lives at [Szmelc-INC/Kombinat](https://github.com/Szmelc-INC/Kombinat), part of 
 `MkII` (also written `2.0` / `v2`) means the old Kombinat v1 architecture — branches included — refactored into the v2 format, the CI/CD way: **core design and framework first, then every v1 feature ported module by module**. The core is built ([`PROMPTS/CORE.md`](PROMPTS/CORE.md)): config registry, append-only event log, module loader and runtime, HTTP JSON API and CLI, with the demo module [`hello`](modules/hello/MODULE.md). Next: the v1 audit into the porting queue, then one module per PR. The old v1 stays private and read-only: source material only, never copied into v2.
 
 ## Quick start
-Needs Go (the version in `go.mod`), `make` and `curl`; `jq`, `shellcheck` and `php` for the full check.
+Needs Go (the version in `go.mod`), `make`, `curl` and `jq`.
 
 ```sh
-make check                      # lint, build, unit tests, end-to-end smoke test
+make build                      # bin/kombinat, one static binary
 export KOMBINAT_ROOT=$PWD       # the Kombinat root: modules/, config/, var/, secrets/
 bin/kombinat serve &            # API on 127.0.0.1:2138; creates secrets/api_token on first run
+until [ -s var/run/api.json ]; do sleep 0.1; done   # written once the server is ready
 bin/kombinat module enable hello
 port=$(jq -r .port var/run/api.json)   # the live port, also after a busy-port fallback
 curl -s -H "Authorization: Bearer $(cat secrets/api_token)" "http://127.0.0.1:$port/api/modules/hello"
@@ -39,7 +40,7 @@ bin/kombinat log --tail 1       # shows the core.module.enable event
 bin/kombinat module run hello Szmelc
 ```
 
-`bin/kombinat --help` lists every command; `bin/kombinat completion bash|zsh|fish` prints completions (generated copies live in [`completions/`](completions/)). A busy port falls back to a free one, recorded in `var/run/api.json`.
+The full check — lint, build, unit tests and the end-to-end smoke test — is `make check`; it also needs `shellcheck`, and `php` for the PHP runtime tests. `bin/kombinat --help` lists every command; `bin/kombinat completion bash|zsh|fish` prints completions (generated copies live in [`completions/`](completions/)). A busy port falls back to a free one, recorded in `var/run/api.json`.
 
 ## Stack
 `Go` core (one static binary, SQLite in WAL mode via a pure-Go driver); modules in `Go`, `PHP` or POSIX shell behind one contract. Primary focus is always Linux (Arch > Nix > other), then Windows via WSL and macOS via zsh, by staying POSIX and Unix-like.
