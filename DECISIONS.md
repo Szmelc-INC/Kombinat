@@ -15,3 +15,18 @@ Every deviation from `AGENTS.md`, `docs/CONVENTIONS.md` or a `PROMPTS/` brief â€
 - Context: `AGENTS.md` asks for a second agent or a human to run `PROMPTS/REVIEW.md`; `PROMPTS/MASTER.md` says the acting agent never merges its own PR unasked. The owner asked agents to review and merge their own PRs once CI is green, without spawning extra agents, using merge commits by default.
 - Decision: the acting agent runs `PROMPTS/REVIEW.md` read-only on its own PR, posts the findings and the verdict as a PR comment, and merges with a merge commit (`gh pr merge --merge`) when CI is green and no P0/P1 is open. A rebase merge needs the owner's acknowledgement first, a squash merge the owner's explicit confirmation; no admin bypass ever.
 - Consequence: every merged PR carries its review comment; a human or a second agent can still review any PR and their P0/P1 findings block the merge.
+
+## 4. Core Go layout
+- Context: `PROMPTS/CORE.md` fixes the `core/` package layout but not where `go.mod` lives or how packages arrive.
+- Decision: one Go module at the repo root (`github.com/Szmelc-INC/Kombinat`); the binary is `core/cmd/kombinat`, each core package (`cli`, `config`, `events`, `store`, `modules`, `api`) lands with the phase that needs it, never earlier. `CGO_ENABLED=0`, so the binary stays static.
+- Consequence: `go build ./...` and `go test ./...` cover the whole tree from the root; no empty packages wait ahead of their phase.
+
+## 5. CLI conventions in the core CLI
+- Context: the owner's CLI rules ask for colored per-command help, aligned tables, `--no-color` and `NO_COLOR`, `--json`, exit codes 0/1/2 and `completion` for bash, zsh and fish with installed files.
+- Decision: the core CLI is one command registry; help and completion scripts are generated from it. The generated scripts are committed under `completions/` (`make completions`), and a Go test fails when they drift from the registry.
+- Consequence: every new subcommand updates `completions/` in the same change, or `make check` fails.
+
+## 6. TUI and packaging come after the core
+- Context: the owner's project rules ask any CLI project for a Go TUI (bubbletea, lipgloss, bubbles, glamour), an Arch `PKGBUILD` and a `flake.nix`; `PROMPTS/CORE.md` keeps the core to router, loader, config, events, store and CLI, stdlib first.
+- Decision: the TUI is a module (an interfaces module that reads and changes state only through the API), built after the core handoff; the `PKGBUILD` and `flake.nix` land in one packaging change right after phase 7, with their CI build steps.
+- Consequence: the core takes no Charm dependency; until the packaging change merges, `make build` is the only install path.
