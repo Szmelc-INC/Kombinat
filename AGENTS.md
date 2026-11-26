@@ -34,6 +34,7 @@
 ## Workflow
 - One feature = one module = one PR on one branch (`feat/`, `fix/` or `docs/` plus the module name); commit titles per `CONVENTIONS/WORKFLOW/COMMITS.md`.
 - Porting: claim exactly one `docs/PORTING.md` row (Todo → In progress, your name + date) and push the claim before writing code; run `PROMPTS/PORT.md` for it.
+- Merge via PR only: `gh pr merge --merge` or `gh pr merge --rebase`, never squash; `sernik77`, `PolskiKocurek` and `hajtuszko` may review and merge.
 - A PR merges when: `tools/lint.sh` and module tests pass, self-review is done, a second agent or human ran `PROMPTS/REVIEW.md` with no P0/P1 open, and the queue row says Done.
 - Language policy per `CONVENTIONS/REPO/WRITING.md`: English in code, comments, docs, commits and issues; Polish only in chat with humans and in `locales/pl.json` strings.
 - Escalate to a human only for destructive, cross-repo or security-critical calls; everything else: decide, log in `DECISIONS.md`, continue.
