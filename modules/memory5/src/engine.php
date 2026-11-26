@@ -675,7 +675,7 @@ function collect_files(Ctx $x): array
  * Embeds texts through embed.command or embed.url; null with $err set on any failure.
  * @return list<list<float>>|null unit vectors, one per text
  */
-function embed(Ctx $x, array $texts, bool $query, ?string &$err): ?array
+function embed(Ctx $x, array $texts, bool $query, ?string &$err, ?int $cap = null): ?array
 {
     $err = null;
     if (!$x->get('embed.enabled', 'bool')) {
@@ -688,6 +688,9 @@ function embed(Ctx $x, array $texts, bool $query, ?string &$err): ?array
     $req = json_encode(['model' => $x->get('embed.model', 'string'), 'input' => array_values($texts)],
         JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     $timeout = $query ? $x->int('embed.query_timeout_seconds', 1) : $x->int('embed.timeout_seconds', 1);
+    if ($cap !== null) {
+        $timeout = max(1, min($timeout, $cap));
+    }
     $cmd = $x->get('embed.command', 'list');
     $url = $x->get('embed.url', 'string');
     if ($cmd !== []) {
@@ -852,6 +855,13 @@ function dot(array $a, array $b): float
 
 // ---------------------------------------------------------------- operations
 
+/** Part of every document version: changing the redaction rules or the chunk size re-indexes everything. */
+function index_sig(Ctx $x): string
+{
+    $parts = [SCHEMA, $x->get('redact.assignments', 'bool'), $x->get('redact.patterns', 'list'), $x->int('index.chunk_bytes', 64)];
+    return substr(sha1(json_encode($parts, JSON_THROW_ON_ERROR)), 0, 10);
+}
+
 /** One index run: files, journal days and memories, then missing vectors, within index.budget_seconds. */
 function op_index(Ctx $x, bool $rebuild): array
 {
@@ -871,6 +881,7 @@ function op_index(Ctx $x, bool $rebuild): array
         $db->exec('DELETE FROM chunks_fts; DELETE FROM chunks; DELETE FROM docs;');
     }
 
+    $sig = index_sig($x);
     $c = collect_files($x);
     $rep['files_seen'] = count($c['files']);
     $rep['excluded'] = count($c['excluded']);
@@ -891,7 +902,7 @@ function op_index(Ctx $x, bool $rebuild): array
             $rep['failed']++;
             continue;
         }
-        $version = $st['mtime'] . ':' . $st['size'];
+        $version = $st['mtime'] . ':' . $st['size'] . ':' . $sig;
         $get->execute([$real]);
         $doc = $get->fetch(\PDO::FETCH_ASSOC) ?: null;
         $get->closeCursor();
@@ -908,9 +919,20 @@ function op_index(Ctx $x, bool $rebuild): array
             }
             continue;
         }
-        [$text, $n] = $x->redact($text);
+        try {
+            [$text, $n] = $x->redact($text);
+        } catch (Fail) {
+            // A file the redaction cannot process is never indexed, and never stops the run.
+            $rep['failed']++;
+            $rep['excluded_paths'][] = [$real, 'redaction failed'];
+            if ($doc !== null && drop_doc($db, 'file', $real)) {
+                $rep['removed']++;
+            }
+            continue;
+        }
         $rep['redactions'] += $n;
-        if ($doc !== null && $doc['hash'] === sha1($text)) {
+        // Same text under the same rules and chunk size: only the file's mtime moved.
+        if ($doc !== null && str_ends_with($doc['version'], ':' . $sig) && $doc['hash'] === sha1($text)) {
             $touch->execute([$version, $real]);
             $rep['unchanged']++;
             continue;
@@ -926,20 +948,46 @@ function op_index(Ctx $x, bool $rebuild): array
         }
     }
 
-    // Journal days and memories are already redacted at write time; this only repairs the derived index.
+    // Journal entries and memories were redacted at write time; the current rules run over them again,
+    // so a pattern added later reaches old entries too. Then the derived index is repaired.
+    $fix = static function (string $table) use ($x, $db, &$rep): array {
+        $changed = [];
+        $upd = $db->prepare("UPDATE $table SET text = ? WHERE id = ?");
+        foreach ($db->query("SELECT id, text FROM $table")->fetchAll(\PDO::FETCH_KEY_PAIR) as $id => $text) {
+            try {
+                [$t, $n] = $x->redact((string) $text);
+            } catch (Fail) {
+                $rep['failed']++;
+                continue;
+            }
+            if ($t !== $text) {
+                $upd->execute([$t, $id]);
+                $rep['redactions'] += $n;
+                $changed[(int) $id] = true;
+            }
+        }
+        return $changed;
+    };
+    $changed = $fix('journal');
+    $dirty = [];
+    if ($changed !== []) {
+        $ids = implode(',', array_keys($changed));
+        $dirty = array_flip($db->query("SELECT DISTINCT day FROM journal WHERE id IN ($ids)")->fetchAll(\PDO::FETCH_COLUMN));
+    }
     $days = $db->query('SELECT day, COUNT(*) || \':\' || MAX(id) AS v FROM journal GROUP BY day')->fetchAll(\PDO::FETCH_KEY_PAIR);
     $have = $db->query("SELECT ref, version FROM docs WHERE source = 'journal'")->fetchAll(\PDO::FETCH_KEY_PAIR);
     foreach ($days as $day => $v) {
-        if (($have[$day] ?? null) !== $v) {
+        if (isset($dirty[$day]) || ($have[$day] ?? null) !== "$v:$sig") {
             $rep['chunks'] += index_journal_day($x, (string) $day);
             $rep['journal_days']++;
         }
     }
+    $changed = $fix('memories');
     $mems = $db->query('SELECT id, text FROM memories')->fetchAll(\PDO::FETCH_KEY_PAIR);
     $have = $db->query("SELECT ref, version FROM docs WHERE source = 'memory'")->fetchAll(\PDO::FETCH_KEY_PAIR);
     foreach ($mems as $id => $text) {
-        if (!isset($have[(string) $id])) {
-            $rep['chunks'] += put_doc($x, 'memory', (string) $id, "Memory #$id", (string) $id, (string) $text);
+        if (isset($changed[(int) $id]) || ($have[(string) $id] ?? null) !== "$id:$sig") {
+            $rep['chunks'] += put_doc($x, 'memory', (string) $id, "Memory #$id", "$id:$sig", (string) $text);
             $rep['memories']++;
         }
     }
@@ -963,7 +1011,8 @@ function op_index(Ctx $x, bool $rebuild): array
                 break;
             }
             $texts = array_map(static fn ($r) => context_line($r['title'], $r['heading']) . "\n" . $r['body'], $rows);
-            $vecs = embed($x, $texts, false, $err);
+            // Each request gets at most what is left of the budget, so a run stays inside the core's timeout.
+            $vecs = embed($x, $texts, false, $err, (int) ceil($budget - (microtime(true) - $start)));
             if ($vecs === null) {
                 $rep['vector_error'] = (string) $err;
                 break;
@@ -984,6 +1033,8 @@ function op_index(Ctx $x, bool $rebuild): array
         }
     }
     $db->exec('DELETE FROM vectors WHERE hash NOT IN (SELECT hash FROM chunks)');
+    // Merge the FTS5 segments, so removed or re-redacted text leaves the full-text index's bytes too.
+    $db->exec("INSERT INTO chunks_fts (chunks_fts) VALUES ('optimize')");
 
     $rep['seconds'] = round(microtime(true) - $start, 3);
     state_set($db, 'last_index_at', now_utc());
@@ -1031,7 +1082,7 @@ function index_journal_day(Ctx $x, string $day): int
         $parts[] = "## $t (#{$r['id']})\n{$r['text']}";
     }
     $last = end($rows);
-    return put_doc($x, 'journal', $day, "Journal $day", count($rows) . ':' . $last['id'], implode("\n\n", $parts));
+    return put_doc($x, 'journal', $day, "Journal $day", count($rows) . ':' . $last['id'] . ':' . index_sig($x), implode("\n\n", $parts));
 }
 
 function check_text(string $text, int $max, string $what): void
@@ -1054,7 +1105,7 @@ function op_memory_add(Ctx $x, string $text): array
     $db = $x->db();
     $db->prepare('INSERT INTO memories (text, created_at) VALUES (?, ?)')->execute([$text, now_utc()]);
     $id = (int) $db->lastInsertId();
-    put_doc($x, 'memory', (string) $id, "Memory #$id", (string) $id, $text);
+    put_doc($x, 'memory', (string) $id, "Memory #$id", $id . ':' . index_sig($x), $text);
     emit('memory.added', "memory/$id", "added memory #$id", ['id' => $id, 'bytes' => strlen($text), 'redactions' => $n]);
     return ['id' => $id, 'bytes' => strlen($text), 'redactions' => $n];
 }
@@ -1068,6 +1119,7 @@ function op_memory_delete(Ctx $x, int $id): array
     $gone = $s->rowCount() > 0;
     drop_doc($db, 'memory', (string) $id);
     $db->commit();
+    $db->exec("INSERT INTO chunks_fts (chunks_fts) VALUES ('optimize')");
     if (!$gone) {
         fail("no memory #$id");
     }
@@ -1243,7 +1295,10 @@ function op_query(Ctx $x, string $q, ?int $limit, string $source): array
 function clean(string $s, bool $oneLine): string
 {
     $s = preg_replace('/[\x{202A}-\x{202E}\x{2066}-\x{2069}\x{200E}\x{200F}]/u', '', $s) ?? '';
-    $s = preg_replace($oneLine ? '/[\x00-\x1F\x7F]/' : '/[\x00-\x08\x0B-\x1F\x7F]/', $oneLine ? ' ' : '', $s) ?? '';
+    if ($oneLine) {
+        $s = preg_replace('/[\x{85}\x{2028}\x{2029}]/u', ' ', $s) ?? '';
+    }
+    $s = preg_replace($oneLine ? '/[\x00-\x1F\x7F]/' : '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $oneLine ? ' ' : '', $s) ?? '';
     return $s;
 }
 
@@ -1255,10 +1310,10 @@ function frame(array $q): string
 {
     $lines = ['memory5: ' . $q['notice'], BEGIN_MARK];
     foreach ($q['results'] as $r) {
-        $where = clean(context_line($r['title'], $r['heading']), true);
-        $ref = clean($r['ref'], true);
+        // The header holds only module-made fields; the ref (a path, day or id) is a JSON string literal.
+        $ref = json_encode(clean($r['ref'], true), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         $sim = $r['similarity'] !== null ? sprintf(', similarity %.4f', $r['similarity']) : '';
-        $lines[] = sprintf('[%d] source: %s %s | %s (%s, score %.6f%s)', $r['rank'], $r['source'], $ref, $where, $r['match'], $r['score'], $sim);
+        $lines[] = sprintf('[%d] source: %s %s (%s, score %.6f%s)', $r['rank'], $r['source'], $ref, $r['match'], $r['score'], $sim);
         foreach (preg_split('/\R/u', clean($r['text'], false)) as $l) {
             $lines[] = '> ' . $l;
         }
