@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/Szmelc-INC/Kombinat/core/config"
@@ -170,6 +171,12 @@ func (s *Server) addEvent(w http.ResponseWriter, r *http.Request) {
 	var req addEventRequest
 	if err := decode(r, &req); err != nil {
 		Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// The core namespace is the core's own record: clients never write it,
+	// so a core.* event in the log always comes from the core itself.
+	if strings.HasPrefix(req.Action, "core.") {
+		Error(w, http.StatusForbidden, "the core.* namespace is reserved for the core")
 		return
 	}
 	e, err := s.Log.Append(r.Context(), events.Event{

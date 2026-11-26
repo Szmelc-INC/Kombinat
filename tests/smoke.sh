@@ -95,12 +95,15 @@ rm "$root/config/core.toml" "$root/config/hello.local.toml"
 
 step "event log: an action via the API, then log --tail 1 shows it"
 start_server
-api POST /api/events '{"action":"core.smoke","summary":"hello from smoke"}'
+api POST /api/events '{"action":"smoke.note","summary":"hello from smoke"}'
 [[ $status == 201 && $(jq -r .ok <<<"$out") == true ]] || fail "POST /api/events: $status $out"
 expect 0 "$bin" log --tail 1
-[[ $out == *"core.smoke"*"hello from smoke"* ]] || fail "log --tail 1 printed: $out"
+[[ $out == *"smoke.note"*"hello from smoke"* ]] || fail "log --tail 1 printed: $out"
 expect 0 "$bin" --json log --tail 1
 [[ $(jq -r '.[0].actor' <<<"$out") == api ]] || fail "log --json: $out"
+
+api POST /api/events '{"action":"core.module.enable","summary":"forged"}'
+[[ $status == 403 ]] || fail "a client wrote a core.* event: $status $out"
 
 step "API: foreign Host is refused, unknown route answers the JSON envelope"
 status=$(curl -sS -o /dev/null -w '%{http_code}' -H "@$root/.auth" -H 'Host: evil.example' "$base/api/events")
