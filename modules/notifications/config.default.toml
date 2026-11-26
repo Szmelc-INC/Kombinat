@@ -52,7 +52,7 @@ sound = ""
 source = ""
 
 [module.levels.attention]
-# boolean — popup when an answer or approval is needed. Default true.
+# boolean — popup when the human must decide something. Default true.
 desktop = true
 # string — urgency for attention. Default "normal".
 urgency = "normal"
@@ -62,7 +62,7 @@ sound = "attention.oga"
 source = "file:///usr/share/sounds/freedesktop/stereo/message-new-instant.oga"
 
 [module.levels.done]
-# boolean — popup when a task or phase finished. Default true.
+# boolean — popup when long work completed. Default true.
 desktop = true
 # string — urgency for done. Default "normal".
 urgency = "normal"
@@ -72,7 +72,7 @@ sound = "done.oga"
 source = "file:///usr/share/sounds/freedesktop/stereo/complete.oga"
 
 [module.levels.error]
-# boolean — popup when something failed or is blocked. Default true.
+# boolean — popup when work hits a failure or a blocker. Default true.
 desktop = true
 # string — urgency for error. Default "critical".
 urgency = "critical"
@@ -82,7 +82,7 @@ sound = "error.oga"
 source = "file:///usr/share/sounds/freedesktop/stereo/dialog-warning.oga"
 
 [module.levels.elevated]
-# boolean — popup right before an elevated command asks for a password (name the exact command in the body). Default true.
+# boolean — popup before a command with raised privileges runs (the body carries that command). Default true.
 desktop = true
 # string — urgency for elevated. Default "critical".
 urgency = "critical"

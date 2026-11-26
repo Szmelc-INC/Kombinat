@@ -1,6 +1,6 @@
 {
   "module.notifications.title": "Notifications",
-  "module.notifications.description": "Reaches the human: desktop notifications, at most one sound per interval, a mute switch, optional speech; every notification is an event.",
+  "module.notifications.description": "Tells the human what happened: desktop notifications, at most one sound per interval, a mute switch, optional speech; every notification is an event.",
   "module.notifications.level.info": "Info",
   "module.notifications.level.attention": "Attention needed",
   "module.notifications.level.done": "Done",

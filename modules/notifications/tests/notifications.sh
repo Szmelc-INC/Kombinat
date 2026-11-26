@@ -47,10 +47,11 @@ sa() {
     KOMBINAT_CFG_MODULE_PLAYER_COMMAND="${P:-kn-play}" \
     KOMBINAT_CFG_MODULE_SPEECH_COMMAND="${S:-kn-say}" \
     KOMBINAT_CFG_MODULE_SPEECH_ENABLED="${SPEAK:-false}" \
-    KOMBINAT_CFG_MODULE_FIND_SESSION=false \
+    KOMBINAT_CFG_MODULE_FIND_SESSION="${FS:-false}" \
     sh "$here/src/cli.sh" "$@"
 }
-out=$(sa send "done" "Build finished" "all green")
+# The first run also takes the find_session path (the default); the stubs ignore the session.
+out=$(FS=true sa send "done" "Build finished" "all green")
 expect "$out" 'desktop: sent' 'sound: started (done.oga)' 'speech: skipped (off)' 'logged: no (standalone)'
 grep -qxF -- '[-a][Kombinat][-u][normal][--][Build finished][all green]' "$stubs/notify.log" || fail "notifier argv: $(cat "$stubs/notify.log")"
 [[ $(count "$stubs/play.log") == 1 && $(cat "$stubs/play.log") == "$sa_data/sounds/done.oga" ]] || fail "player argv"

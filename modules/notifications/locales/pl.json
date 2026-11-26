@@ -1,6 +1,6 @@
 {
   "module.notifications.title": "Powiadomienia",
-  "module.notifications.description": "Docierają do człowieka: powiadomienia na pulpicie, najwyżej jeden dźwięk na odstęp czasu, wyciszenie, opcjonalna mowa; każde powiadomienie to zdarzenie.",
+  "module.notifications.description": "Mówią człowiekowi, co się stało: powiadomienia na pulpicie, najwyżej jeden dźwięk na odstęp czasu, wyciszenie, opcjonalna mowa; każde powiadomienie to zdarzenie.",
   "module.notifications.level.info": "Informacja",
   "module.notifications.level.attention": "Potrzebna uwaga",
   "module.notifications.level.done": "Gotowe",

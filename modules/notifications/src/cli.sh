@@ -1,5 +1,5 @@
 #!/bin/sh
-# Notifications CLI entrypoint: the way to reach the human. One notification is
+# Notifications CLI entrypoint: tells the human what happened. One notification is
 # a desktop popup, at most one sound (or spoken line) per interval, and one
 # notifications.sent event, whichever channels are available.
 #
@@ -339,7 +339,7 @@ cmd_send() {
       "$level" "$title" "$desktop" "$sound" "$speech" "$(logged_text)"
   fi
 
-  # Sound first, then speech, so they never overlap; failures stay silent.
+  # Sound, then speech, one after the other; failures stay silent.
   case $sound in
     started*) run_cfg "$player" "$SOUNDS/$sound_name" </dev/null >/dev/null 2>&1 || true ;;
   esac

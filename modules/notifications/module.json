@@ -2,7 +2,7 @@
   "name": "notifications",
   "display_name": "Notifications",
   "version": "0.1.0",
-  "description": "Reaches the human: desktop notifications at five levels, at most one sound per interval, a mute switch, optional speech and a sound pack fetcher; every notification is an event.",
+  "description": "Tells the human what happened: desktop notifications at five levels, at most one sound per interval, a mute switch, optional speech and a sound pack fetcher; every notification is an event.",
   "depends": [],
   "provides": {
     "api": [],
