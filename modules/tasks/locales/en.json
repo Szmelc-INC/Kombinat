@@ -1,0 +1,20 @@
+{
+  "module.tasks.title": "Tasks",
+  "module.tasks.description": "Tasks, ideas and plans as one type with seven states and threaded comments.",
+  "module.tasks.status.idea": "Idea",
+  "module.tasks.status.planned": "Planned",
+  "module.tasks.status.queued": "Queued",
+  "module.tasks.status.running": "Running",
+  "module.tasks.status.done": "Done",
+  "module.tasks.status.failed": "Failed",
+  "module.tasks.status.dropped": "Dropped",
+  "module.tasks.field.title": "Title",
+  "module.tasks.field.status": "Status",
+  "module.tasks.field.priority": "Priority",
+  "module.tasks.field.owner": "Owner",
+  "module.tasks.field.parent": "Parent task",
+  "module.tasks.field.body": "Body",
+  "module.tasks.comments": "Comments",
+  "module.tasks.reply": "Reply",
+  "module.tasks.empty": "No tasks."
+}

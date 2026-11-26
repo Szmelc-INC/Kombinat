@@ -1,0 +1,49 @@
+{
+  "name": "tasks",
+  "display_name": "Tasks",
+  "version": "0.1.0",
+  "description": "Tasks, ideas and plans as one type with seven states and threaded comments, with full create, read, update and delete from the API and the CLI.",
+  "depends": [],
+  "provides": {
+    "api": [
+      "tasks.add",
+      "tasks.list",
+      "tasks.show",
+      "tasks.update",
+      "tasks.delete",
+      "tasks.comment.add",
+      "tasks.comment.edit",
+      "tasks.comment.delete"
+    ],
+    "events": [
+      "tasks.add",
+      "tasks.update",
+      "tasks.delete",
+      "tasks.comment.add",
+      "tasks.comment.edit",
+      "tasks.comment.delete"
+    ],
+    "capabilities": [],
+    "config": [
+      "enabled",
+      "tasks.default_status",
+      "tasks.title_max_bytes",
+      "tasks.body_max_bytes",
+      "comments.default_author",
+      "comments.text_max_bytes",
+      "list.default_limit",
+      "list.max_limit",
+      "storage.busy_timeout_ms"
+    ]
+  },
+  "entrypoints": {
+    "api": true,
+    "cli": true,
+    "ui": false,
+    "worker": false
+  },
+  "locales": [
+    "en",
+    "pl"
+  ]
+}
