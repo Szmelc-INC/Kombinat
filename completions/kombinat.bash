@@ -12,9 +12,10 @@ _kombinat() {
     words+=" --json --no-color --help"
   else
     case $p in
-      "") words="completion help version" ;;
+      "") words="completion config help version" ;;
       "completion") words="bash zsh fish" ;;
-      "help") words="completion help version" ;;
+      "config") words="show" ;;
+      "help") words="completion config help version" ;;
     esac
   fi
   mapfile -t COMPREPLY < <(compgen -W "$words" -- "$cur")

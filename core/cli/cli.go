@@ -70,6 +70,7 @@ func Root() *Command {
 	}
 	root.Sub = []*Command{
 		completionCommand(),
+		configCommand(),
 		helpCommand(),
 		versionCommand(),
 	}
