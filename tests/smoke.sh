@@ -29,6 +29,8 @@ start_server() {
   for ((i = 0; i < 100; i++)); do
     if [[ -s $root/var/run/api.json ]]; then
       base="http://127.0.0.1:$(jq -r .port "$root/var/run/api.json")"
+      # The token goes to curl through a header file, never on a command line.
+      printf 'Authorization: Bearer %s\n' "$(cat "$root/secrets/api_token")" >"$root/.auth"
       return 0
     fi
     kill -0 "$server_pid" 2>/dev/null || fail "server exited early"
@@ -44,8 +46,16 @@ stop_server() {
   [[ ! -e $root/var/run/api.json ]] || fail "var/run/api.json left behind"
 }
 
-# api <method> <path> [json]: call the API; sets $out to the body and $status to the HTTP code.
+# api <method> <path> [json]: call the API with the token; sets $out to the body and $status to the HTTP code.
 api() {
+  local args=(-sS -o "$root/.body" -w '%{http_code}' -H "@$root/.auth" -X "$1")
+  [[ $# -ge 3 ]] && args+=(-H 'Content-Type: application/json' --data "$3")
+  status=$(curl "${args[@]}" "$base$2")
+  out=$(cat "$root/.body")
+}
+
+# api_anon <method> <path> [json]: the same call without a token.
+api_anon() {
   local args=(-sS -o "$root/.body" -w '%{http_code}' -X "$1")
   [[ $# -ge 3 ]] && args+=(-H 'Content-Type: application/json' --data "$3")
   status=$(curl "${args[@]}" "$base$2")
@@ -93,7 +103,7 @@ expect 0 "$bin" --json log --tail 1
 [[ $(jq -r '.[0].actor' <<<"$out") == api ]] || fail "log --json: $out"
 
 step "API: foreign Host is refused, unknown route answers the JSON envelope"
-status=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: evil.example' "$base/api/events")
+status=$(curl -sS -o /dev/null -w '%{http_code}' -H "@$root/.auth" -H 'Host: evil.example' "$base/api/events")
 [[ $status == 403 ]] || fail "foreign Host: $status"
 api GET /api/nope
 [[ $status == 404 && $(jq -r .ok <<<"$out") == false ]] || fail "unknown route: $status $out"
@@ -135,6 +145,31 @@ api GET /api/modules/hello
 expect 0 "$bin" log --tail 1
 [[ $out == *"core.module.disable"*"hello"* ]] || fail "disable not logged: $out"
 expect 1 "$bin" module enable broken
+
+step "API surface: every route answers the right status; no token means 401"
+[[ $(stat -c %a "$root/secrets/api_token") == 600 ]] || fail "secrets/api_token must be mode 0600"
+for route in "GET /api/config" "GET /api/events" "GET /api/modules" "GET /api/modules/hello" "POST /api/modules/hello/enable"; do
+  read -r method path <<<"$route"
+  if [[ $method == POST ]]; then api_anon "$method" "$path" '{}'; else api_anon "$method" "$path"; fi
+  [[ $status == 401 && $(jq -r .ok <<<"$out") == false ]] || fail "$route without a token: $status $out"
+done
+api GET /api/config
+[[ $status == 200 && $(jq -r .data.core.store.path <<<"$out") == var/kombinat.db ]] || fail "GET /api/config: $status $out"
+api GET /api/modules
+[[ $status == 200 && $(jq -r '[.data[].name] | join(",")' <<<"$out") == broken,hello ]] || fail "GET /api/modules: $status $out"
+[[ $(jq -r '.data[] | select(.name == "broken") | .status' <<<"$out") == invalid ]] || fail "broken must list as invalid: $out"
+api POST /api/modules/hello/enable '{}'
+[[ $status == 200 && $(jq -r .data.status <<<"$out") == running ]] || fail "POST enable: $status $out"
+api GET /api/modules/hello
+[[ $status == 200 ]] || fail "GET enabled module: $status"
+api POST /api/modules/broken/enable '{}'
+[[ $status == 422 ]] || fail "POST enable invalid: $status $out"
+api POST /api/modules/ghost/enable '{}'
+[[ $status == 404 ]] || fail "POST enable unknown: $status $out"
+api POST /api/modules/hello/disable '{}'
+[[ $status == 200 ]] || fail "POST disable: $status $out"
+expect 0 "$bin" --json log --tail 1
+[[ $(jq -r '.[0].action + " " + .[0].actor' <<<"$out") == "core.module.disable api" ]] || fail "API lifecycle event: $out"
 stop_server
 
 step "hello runs standalone"

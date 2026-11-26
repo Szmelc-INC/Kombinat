@@ -70,3 +70,13 @@ Every deviation from `AGENTS.md`, `docs/CONVENTIONS.md` or a `PROMPTS/` brief â€
 - Context: the server could rescan `modules/` on every request or once.
 - Decision: `kombinat serve` discovers modules once at start; lifecycle state is read from the store on every request, so CLI `enable`, `disable`, `start` and `stop` take effect on a running server at once.
 - Consequence: a newly added or edited module directory needs a server restart; reloading without a restart becomes the modules manager's job.
+
+## 15. API tokens from secrets/
+- Context: `PROMPTS/CORE.md` asks for an auth token from `secrets/` for non-browser clients, with 401 when it is missing.
+- Decision: `kombinat serve` creates `secrets/api_token` (32 random bytes, hex, mode 0600) when it is missing and prints only its path. Every API route needs `Authorization: Bearer TOKEN`; `secrets/api_token` acts as actor `api`, and each `secrets/token-ACTOR` file acts as `ACTOR`, so events name who did what. Tokens are at least 32 characters, unique, compared in constant time, and read once at server start; the event log records actor names, never tokens.
+- Consequence: rotating a token means editing the file and restarting the server. Browser sessions with CSRF tokens are not in the core yet: the first web interface module asks for them through a `core-change` issue, and until then the browser guard (decision 10) plus the bearer token keep browsers out.
+
+## 16. The API surface
+- Context: phase 5 names `/api/modules`, `/api/modules/NAME`, `/api/events` and `/api/config` without methods or status codes.
+- Decision: `GET /api/config` (merged config, secret-shaped keys redacted), `GET` and `POST /api/events`, `GET /api/modules` (every module, invalid ones included, with state), `GET /api/modules/NAME` (a running module; 404 otherwise) and `POST /api/modules/NAME/ACTION` for `enable`, `disable`, `start` and `stop` (404 unknown module or action, 409 conflict, 422 invalid module). `api.Routes` lists them, and the tests walk that list.
+- Consequence: the CLI lifecycle commands and the API call the same `modules.Manager` methods; a new route lands in `api.Routes` and its tests in the same change.

@@ -5,15 +5,18 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"mime"
 	"net"
 	"net/http"
 	"strconv"
 	"syscall"
 
+	"github.com/Szmelc-INC/Kombinat/core/config"
 	"github.com/Szmelc-INC/Kombinat/core/events"
 	"github.com/Szmelc-INC/Kombinat/core/modules"
 )
@@ -26,20 +29,41 @@ const MaxBody = 1 << 20
 
 // Server serves the API for one Kombinat root.
 type Server struct {
+	Config  *config.Registry
 	Log     *events.Log
 	Modules *modules.Manager
+	Tokens  Tokens
 }
 
-// Handler returns the API handler for a server bound to port.
+// Routes lists every route the core serves, for docs and tests.
+var Routes = []string{
+	"GET /api/config",
+	"GET /api/events",
+	"POST /api/events",
+	"GET /api/modules",
+	"GET /api/modules/{name}",
+	"POST /api/modules/{name}/{action}",
+}
+
+// Handler returns the API handler for a server bound to port. Every request
+// passes the browser guard, then bearer-token auth, then routing.
 func (s *Server) Handler(port int) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/events", s.listEvents)
-	mux.HandleFunc("POST /api/events", s.addEvent)
-	mux.HandleFunc("GET /api/modules/{name}", s.getModule)
+	handlers := map[string]http.HandlerFunc{
+		"GET /api/config":                   s.getConfig,
+		"GET /api/events":                   s.listEvents,
+		"POST /api/events":                  s.addEvent,
+		"GET /api/modules":                  s.listModules,
+		"GET /api/modules/{name}":           s.getModule,
+		"POST /api/modules/{name}/{action}": s.moduleAction,
+	}
+	for _, route := range Routes {
+		mux.HandleFunc(route, handlers[route])
+	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		Error(w, http.StatusNotFound, "no such route: "+r.Method+" "+r.URL.Path)
 	})
-	return guard(port, mux)
+	return guard(port, authenticate(s.Tokens, mux))
 }
 
 // guard enforces the loopback-only browser rules before any route runs.
@@ -149,7 +173,7 @@ func (s *Server) addEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	e, err := s.Log.Append(r.Context(), events.Event{
-		Actor:   "api",
+		Actor:   Actor(r),
 		Action:  req.Action,
 		Subject: req.Subject,
 		Summary: req.Summary,
@@ -164,6 +188,61 @@ func (s *Server) addEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	JSON(w, http.StatusCreated, e)
+}
+
+func (s *Server) getConfig(w http.ResponseWriter, r *http.Request) {
+	mods := make(map[string]any, len(s.Config.Modules))
+	for name, t := range s.Config.Modules {
+		mods[name] = events.Redact(t)
+	}
+	JSON(w, http.StatusOK, map[string]any{"core": events.Redact(s.Config.Core), "modules": mods})
+}
+
+// listModules answers every discovered module, valid or not, with its state.
+func (s *Server) listModules(w http.ResponseWriter, r *http.Request) {
+	states, err := s.Modules.States(r.Context())
+	if err != nil {
+		Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	views := make([]modules.View, 0, len(s.Modules.Modules))
+	for _, m := range s.Modules.Modules {
+		views = append(views, modules.ViewOf(m, states[m.Name]))
+	}
+	JSON(w, http.StatusOK, views)
+}
+
+// moduleAction runs one lifecycle call: enable, disable, start or stop.
+func (s *Server) moduleAction(w http.ResponseWriter, r *http.Request) {
+	calls := map[string]func(*modules.Manager, context.Context, string, string) (modules.Result, error){
+		"enable":  (*modules.Manager).Enable,
+		"disable": (*modules.Manager).Disable,
+		"start":   (*modules.Manager).Start,
+		"stop":    (*modules.Manager).Stop,
+	}
+	call, ok := calls[r.PathValue("action")]
+	if !ok {
+		Error(w, http.StatusNotFound, "no such module action: "+r.PathValue("action")+" (want enable, disable, start or stop)")
+		return
+	}
+	var empty struct{}
+	if err := decode(r, &empty); err != nil && !errors.Is(err, io.EOF) {
+		Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	res, err := call(s.Modules, r.Context(), r.PathValue("name"), Actor(r))
+	switch {
+	case errors.Is(err, modules.ErrNotFound):
+		Error(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, modules.ErrInvalid):
+		Error(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, modules.ErrConflict):
+		Error(w, http.StatusConflict, err.Error())
+	case err != nil:
+		Error(w, http.StatusInternalServerError, err.Error())
+	default:
+		JSON(w, http.StatusOK, res)
+	}
 }
 
 // getModule answers a running module's description; a module that is
