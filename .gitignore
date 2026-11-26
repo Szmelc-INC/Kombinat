@@ -1,0 +1,13 @@
+# Secrets and the private v1 porting map never enter the repo (AGENTS.md Security, PROMPTS/AUDIT.md).
+secrets/
+PORTING.local.md
+
+# Runtime state and build output.
+/var/
+/bin/
+*.db
+*.db-wal
+*.db-shm
+.env*
+*.local.toml
+*.local.json
