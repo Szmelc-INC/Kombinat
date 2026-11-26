@@ -32,6 +32,7 @@ type Server struct {
 	Config  *config.Registry
 	Log     *events.Log
 	Modules *modules.Manager
+	Runner  *modules.Runner
 	Tokens  Tokens
 }
 
@@ -43,6 +44,7 @@ var Routes = []string{
 	"GET /api/modules",
 	"GET /api/modules/{name}",
 	"POST /api/modules/{name}/{action}",
+	"POST /api/modules/{name}/run",
 }
 
 // Handler returns the API handler for a server bound to port. Every request
@@ -56,6 +58,7 @@ func (s *Server) Handler(port int) http.Handler {
 		"GET /api/modules":                  s.listModules,
 		"GET /api/modules/{name}":           s.getModule,
 		"POST /api/modules/{name}/{action}": s.moduleAction,
+		"POST /api/modules/{name}/run":      s.runModule,
 	}
 	for _, route := range Routes {
 		mux.HandleFunc(route, handlers[route])
@@ -238,6 +241,27 @@ func (s *Server) moduleAction(w http.ResponseWriter, r *http.Request) {
 		Error(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, modules.ErrConflict):
 		Error(w, http.StatusConflict, err.Error())
+	case err != nil:
+		Error(w, http.StatusInternalServerError, err.Error())
+	default:
+		JSON(w, http.StatusOK, res)
+	}
+}
+
+// runModule runs one entrypoint of a running module and answers its result;
+// the run itself is logged as core.module.run, whatever its outcome.
+func (s *Server) runModule(w http.ResponseWriter, r *http.Request) {
+	var req modules.RunRequest
+	if err := decode(r, &req); err != nil && !errors.Is(err, io.EOF) {
+		Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	res, err := s.Runner.Run(r.Context(), r.PathValue("name"), req, Actor(r))
+	switch {
+	case errors.Is(err, modules.ErrNotFound):
+		Error(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, modules.ErrBadRequest):
+		Error(w, http.StatusBadRequest, err.Error())
 	case err != nil:
 		Error(w, http.StatusInternalServerError, err.Error())
 	default:

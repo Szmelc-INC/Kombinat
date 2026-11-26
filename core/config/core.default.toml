@@ -12,6 +12,11 @@ port = 2137
 # string — directory scanned for modules, relative to the Kombinat root.
 dir = "modules"
 
+[runtime]
+# integer 1-3600 — seconds one module entrypoint run may take; then its whole
+# process group is killed and the run is logged as a timeout.
+timeout_seconds = 30
+
 [store]
 # string — SQLite database file (WAL mode), relative to the Kombinat root.
 path = "var/kombinat.db"

@@ -3,6 +3,7 @@ package cli
 import (
 	"flag"
 	"io"
+	"time"
 
 	"github.com/Szmelc-INC/Kombinat/core/config"
 	"github.com/Szmelc-INC/Kombinat/core/events"
@@ -21,6 +22,7 @@ type Core struct {
 	Store   *store.Store
 	Log     *events.Log
 	Modules *modules.Manager
+	Runner  *modules.Runner
 }
 
 // Close releases the store.
@@ -46,8 +48,18 @@ func (env *Env) OpenCore() *Core {
 		return nil
 	}
 	log := events.New(st)
-	return &Core{Config: reg, Store: st, Log: log, Modules: &modules.Manager{Modules: mods, Store: st, Log: log}}
+	mgr := &modules.Manager{Modules: mods, Store: st, Log: log}
+	runner := &modules.Runner{
+		Manager:  mgr,
+		CacheDir: reg.Path(CacheDir),
+		Timeout:  time.Duration(config.Int(reg.Core, "runtime.timeout_seconds")) * time.Second,
+		Path:     env.Getenv("PATH"),
+	}
+	return &Core{Config: reg, Store: st, Log: log, Modules: mgr, Runner: runner}
 }
+
+// CacheDir holds built Go entrypoints, relative to the root.
+const CacheDir = "var/cache/modules"
 
 // parseFlags parses args into fs; a bad flag prints the command usage and
 // returns ok=false with ExitUsage.

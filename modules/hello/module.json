@@ -8,7 +8,10 @@
     "api": [],
     "events": [],
     "capabilities": [],
-    "config": ["enabled"]
+    "config": [
+      "enabled",
+      "module.name"
+    ]
   },
   "entrypoints": {
     "api": false,
@@ -16,5 +19,8 @@
     "ui": false,
     "worker": false
   },
-  "locales": ["en", "pl"]
+  "locales": [
+    "en",
+    "pl"
+  ]
 }

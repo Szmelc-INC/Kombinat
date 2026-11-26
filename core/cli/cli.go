@@ -23,6 +23,7 @@ const (
 // IO is everything a run needs from the process: streams, environment and
 // whether stdout is an interactive terminal.
 type IO struct {
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
 	Getenv func(string) string

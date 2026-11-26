@@ -322,6 +322,15 @@ func checkEntrypoints(m *Module) {
 			m.Entrypoints[kind] = found[0]
 		}
 	}
+	// A Go entrypoint builds standalone, from the module's own go.mod.
+	for _, ep := range m.Entrypoints {
+		if ep.Lang == "go" {
+			if _, err := os.Stat(filepath.Join(m.Dir, "go.mod")); err != nil {
+				m.problem("Go entrypoint %s needs the module's own go.mod", ep.Path)
+			}
+			break
+		}
+	}
 }
 
 // checkDepends marks modules whose dependencies are missing or invalid.

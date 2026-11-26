@@ -37,5 +37,8 @@ complete -c kombinat -n '__kombinat_at \'module\'' -a 'check' -d 'Validate every
 complete -c kombinat -n '__kombinat_at \'module\'' -a 'disable' -d 'Stop a module and turn it off'
 complete -c kombinat -n '__kombinat_at \'module\'' -a 'enable' -d 'Turn a module on and start it'
 complete -c kombinat -n '__kombinat_at \'module\'' -a 'ls' -d 'List every module with its version and state'
+complete -c kombinat -n '__kombinat_at \'module\'' -a 'run' -d 'Run a running module\'s entrypoint once; its output and exit code pass through'
 complete -c kombinat -n '__kombinat_at \'module\'' -a 'start' -d 'Start an enabled module that was stopped'
 complete -c kombinat -n '__kombinat_at \'module\'' -a 'stop' -d 'Stop a module without disabling it'
+complete -c kombinat -n '__kombinat_at \'module run\'' -l entrypoint -r -d 'Entrypoint to run: cli (default) or api'
+complete -c kombinat -n '__kombinat_at \'module run\'' -l stdin -d 'Forward this process\'s stdin to the module (max 1 MiB)'

@@ -10,6 +10,7 @@ _kombinat() {
   if [[ $PREFIX == -* ]]; then
     case $p in
       'log') vals=('--tail:Show the last N events (default 20, max 1000)' '--after:Show events with an id above ID instead') ;;
+      'module run') vals=('--entrypoint:Entrypoint to run: cli (default) or api' '--stdin:Forward this process'\''s stdin to the module (max 1 MiB)') ;;
     esac
     vals+=('--json:Print data as JSON')
     vals+=('--no-color:Plain output without colors (also NO_COLOR)')
@@ -22,7 +23,7 @@ _kombinat() {
     'completion') vals=('bash' 'zsh' 'fish') ;;
     'config') vals=('show:Print the merged config as JSON: core plus every module, or one of them') ;;
     'help') vals=('completion' 'config' 'help' 'log' 'module' 'serve' 'version') ;;
-    'module') vals=('check:Validate every module; exit 1 when any is invalid' 'disable:Stop a module and turn it off' 'enable:Turn a module on and start it' 'ls:List every module with its version and state' 'start:Start an enabled module that was stopped' 'stop:Stop a module without disabling it') ;;
+    'module') vals=('check:Validate every module; exit 1 when any is invalid' 'disable:Stop a module and turn it off' 'enable:Turn a module on and start it' 'ls:List every module with its version and state' 'run:Run a running module'\''s entrypoint once; its output and exit code pass through' 'start:Start an enabled module that was stopped' 'stop:Stop a module without disabling it') ;;
   esac
   (( ${#vals} )) && _describe -t values 'kombinat' vals
 }

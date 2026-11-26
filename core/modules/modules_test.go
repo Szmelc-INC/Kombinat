@@ -219,6 +219,8 @@ func TestLifecycle(t *testing.T) {
 	}
 }
 
+func eventsQuery(n int) events.Query { return events.Query{Limit: n} }
+
 func TestInvalidModuleCannotEnable(t *testing.T) {
 	root := t.TempDir()
 	fixture(t, root, "bad", "[]")

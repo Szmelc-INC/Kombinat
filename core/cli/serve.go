@@ -74,7 +74,7 @@ func (env *Env) serve(ctx context.Context, core *Core) int {
 		env.Okf("created %s/%s (mode 0600); API clients send it as a bearer token", SecretsDir, api.TokenFile)
 	}
 	srv := &http.Server{
-		Handler:           (&api.Server{Config: core.Config, Log: core.Log, Modules: core.Modules, Tokens: tokens}).Handler(port),
+		Handler:           (&api.Server{Config: core.Config, Log: core.Log, Modules: core.Modules, Runner: core.Runner, Tokens: tokens}).Handler(port),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	env.event(ctx, core, "core.api.start", fmt.Sprintf("API on %s:%d", api.Host, port),

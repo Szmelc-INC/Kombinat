@@ -9,6 +9,7 @@ _kombinat() {
   if [[ $cur == -* ]]; then
     case $p in
       "log") words="--tail --after" ;;
+      "module run") words="--entrypoint --stdin" ;;
     esac
     words+=" --json --no-color --help"
   else
@@ -17,7 +18,7 @@ _kombinat() {
       "completion") words="bash zsh fish" ;;
       "config") words="show" ;;
       "help") words="completion config help log module serve version" ;;
-      "module") words="check disable enable ls start stop" ;;
+      "module") words="check disable enable ls run start stop" ;;
     esac
   fi
   mapfile -t COMPREPLY < <(compgen -W "$words" -- "$cur")
