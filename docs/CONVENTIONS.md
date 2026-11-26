@@ -1,5 +1,5 @@
 # ARCHITECTURE SPECIFICATION: KOMBINAT 2.0 (MkII) -> v3 "LOGOS"
-> **Org:** [Szmelc™ / Szmelc-INC](https://github.com/Szmelc-INC) (`CYBERSZP0NT` Division)
+> **Org:** [Szmelc™ / Szmelc-INC](https://github.com/Szmelc-INC)
 > **Leadership:** `Sernik` (CEO) | `Polski Kotek` (CTO) | `Henderson` (CDO)
 > **Core Runtime:** `Go` + `PHP` (POSIX/Unix-first: Arch > Nix > WSL > macOS/zsh)
 
