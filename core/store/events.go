@@ -10,8 +10,17 @@ import (
 	"github.com/Szmelc-INC/Kombinat/core/events"
 )
 
+// execer is what both *sql.DB and *sql.Tx offer.
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 // InsertEvent appends e and returns its id (events.Backend).
 func (s *Store) InsertEvent(ctx context.Context, e events.Event) (int64, error) {
+	return insertEvent(ctx, s.db, e)
+}
+
+func insertEvent(ctx context.Context, x execer, e events.Event) (int64, error) {
 	var payload sql.NullString
 	if e.Payload != nil {
 		b, err := json.Marshal(e.Payload)
@@ -20,7 +29,7 @@ func (s *Store) InsertEvent(ctx context.Context, e events.Event) (int64, error) 
 		}
 		payload = sql.NullString{String: string(b), Valid: true}
 	}
-	res, err := s.db.ExecContext(ctx,
+	res, err := x.ExecContext(ctx,
 		`INSERT INTO events (ts, actor, action, subject, summary, payload) VALUES (?, ?, ?, ?, ?, ?)`,
 		e.TS.UTC().Format(time.RFC3339Nano), e.Actor, e.Action, e.Subject, e.Summary, payload)
 	if err != nil {

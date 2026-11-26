@@ -14,9 +14,10 @@ func (env *Env) RootDir() (string, error) {
 	return os.Getwd()
 }
 
-// LoadConfig loads the config registry and prints every problem. It returns
-// nil when the core config or any module config is invalid.
-func (env *Env) LoadConfig() *config.Registry {
+// LoadConfig loads the config registry. A core config problem is printed and
+// returns nil. Module problems do too when strict; otherwise they stay in the
+// registry and the loader marks those modules invalid.
+func (env *Env) LoadConfig(strict bool) *config.Registry {
 	root, err := env.RootDir()
 	if err != nil {
 		env.Errorf("find root: %v", err)
@@ -27,7 +28,7 @@ func (env *Env) LoadConfig() *config.Registry {
 		env.printConfigErrors(err)
 		return nil
 	}
-	if len(reg.Problems) > 0 {
+	if strict && len(reg.Problems) > 0 {
 		env.printConfigErrors(reg.Problems)
 		return nil
 	}
@@ -56,7 +57,7 @@ func configCommand() *Command {
 				if len(args) > 1 {
 					return env.UsageError([]string{"config", "show"}, "config show takes at most one name")
 				}
-				reg := env.LoadConfig()
+				reg := env.LoadConfig(true)
 				if reg == nil {
 					return ExitError
 				}

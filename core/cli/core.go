@@ -6,27 +6,31 @@ import (
 
 	"github.com/Szmelc-INC/Kombinat/core/config"
 	"github.com/Szmelc-INC/Kombinat/core/events"
+	"github.com/Szmelc-INC/Kombinat/core/modules"
 	"github.com/Szmelc-INC/Kombinat/core/store"
 )
 
 // cliActor is the event actor of commands run from the CLI.
 const cliActor = "cli"
 
-// Core is the opened spine of one Kombinat root: config, store and event log.
-// The CLI and the API call the same Core code; there is no second path.
+// Core is the opened spine of one Kombinat root: config, store, event log and
+// module loader. The CLI and the API call the same Core code; there is no
+// second path.
 type Core struct {
-	Config *config.Registry
-	Store  *store.Store
-	Log    *events.Log
+	Config  *config.Registry
+	Store   *store.Store
+	Log     *events.Log
+	Modules *modules.Manager
 }
 
 // Close releases the store.
 func (c *Core) Close() { _ = c.Store.Close() }
 
-// OpenCore loads the config and opens the store; on failure it prints the
-// reason and returns nil.
+// OpenCore loads the config, opens the store and discovers modules; on
+// failure it prints the reason and returns nil. Module problems do not fail
+// it: those modules are listed as invalid and skipped.
 func (env *Env) OpenCore() *Core {
-	reg := env.LoadConfig()
+	reg := env.LoadConfig(false)
 	if reg == nil {
 		return nil
 	}
@@ -35,7 +39,14 @@ func (env *Env) OpenCore() *Core {
 		env.Errorf("%v", err)
 		return nil
 	}
-	return &Core{Config: reg, Store: st, Log: events.New(st)}
+	mods, err := modules.Discover(reg)
+	if err != nil {
+		st.Close()
+		env.Errorf("%v", err)
+		return nil
+	}
+	log := events.New(st)
+	return &Core{Config: reg, Store: st, Log: log, Modules: &modules.Manager{Modules: mods, Store: st, Log: log}}
 }
 
 // parseFlags parses args into fs; a bad flag prints the command usage and

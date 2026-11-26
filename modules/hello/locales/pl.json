@@ -1,0 +1,4 @@
+{
+  "module.hello.title": "Hello",
+  "module.hello.description": "Moduł demonstracyjny: wypisuje jedno powitanie i sprawdza kontrakt modułu od początku do końca."
+}
