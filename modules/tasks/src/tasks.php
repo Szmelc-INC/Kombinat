@@ -31,7 +31,7 @@ const EXIT_CODES = ['internal' => 1, 'invalid' => 2, 'not_found' => 3, 'conflict
 const DEFAULTS = [
     'enabled' => false,
     'tasks' => ['default_status' => 'idea', 'title_max_bytes' => 200, 'body_max_bytes' => 16384],
-    'comments' => ['default_author' => 'operator', 'text_max_bytes' => 8192],
+    'comments' => ['default_author' => 'operator', 'text_max_bytes' => 8192, 'max_depth' => 32],
     'list' => ['default_limit' => 200, 'max_limit' => 1000],
     'storage' => ['busy_timeout_ms' => 5000],
 ];
@@ -161,6 +161,7 @@ function config(): array
     $int('tasks', 'title_max_bytes', 1, 1000);
     $int('tasks', 'body_max_bytes', 2, 262144);
     $int('comments', 'text_max_bytes', 1, 262144);
+    $int('comments', 'max_depth', 1, 100);
     $int('list', 'max_limit', 1, 10000);
     $int('list', 'default_limit', 1, $cfg['list']['max_limit']);
     $int('storage', 'busy_timeout_ms', 0, 60000);
@@ -540,19 +541,17 @@ function op_update(PDO $db, array $cfg, array $req): array
     ]];
 }
 
-// describe lists changes for a summary: "status: idea → planned, body".
+// describe names each changed field with its new value; title and body are
+// only named, since the payload carries both sides in full.
 function describe(array $changes): string
 {
-    $parts = [];
-    foreach ($changes as $key => $c) {
-        if ($key === 'body' || $key === 'title') {
-            $parts[] = $key;
-            continue;
-        }
-        $show = static fn (mixed $v): string => $v === null || $v === '' ? '—' : (string) $v;
-        $parts[] = "$key: " . $show($c['from']) . ' → ' . $show($c['to']);
-    }
-    return implode(', ', $parts);
+    $named = array_map(static fn (string $key, array $c): string => match ($key) {
+        'title', 'body' => $key,
+        'owner' => 'owner=' . ($c['to'] === '' ? 'none' : $c['to']),
+        'parent' => 'parent=' . ($c['to'] === null ? 'none' : '#' . $c['to']),
+        default => "$key=" . $c['to'],
+    }, array_keys($changes), array_values($changes));
+    return implode(', ', $named);
 }
 
 function op_delete(PDO $db, array $req): array
@@ -567,7 +566,7 @@ function op_delete(PDO $db, array $req): array
     $comments = array_map('Kombinat\Tasks\comment_out', all($db, 'SELECT * FROM comments WHERE task_id = ? ORDER BY id', [$id]));
     $db->prepare('DELETE FROM comments WHERE task_id = ?')->execute([$id]);
     $db->prepare('DELETE FROM tasks WHERE id = ?')->execute([$id]);
-    // The event keeps a full copy, so a deletion can be restored by hand.
+    // The event carries the removed rows, so the log alone can rebuild them.
     $bare = $task;
     $bare['body'] = ['omitted' => true];
     return [['deleted' => $task, 'comments' => count($comments)], [
@@ -597,6 +596,15 @@ function op_comment_add(PDO $db, array $cfg, array $req): array
         $parent = find_comment($db, $replyTo);
         if ((int) $parent['task_id'] !== $taskId) {
             fail('conflict', "comment #$replyTo belongs to task #{$parent['task_id']}, not to task #$taskId");
+        }
+        // A top-level comment is level 1; each reply is one level below the comment it answers.
+        $level = 2;
+        for ($up = $parent['reply_to']; $up !== null; $up = find_comment($db, (int) $up)['reply_to']) {
+            $level++;
+        }
+        $max = $cfg['comments']['max_depth'];
+        if ($level > $max) {
+            fail('conflict', "a reply to comment #$replyTo would sit at level $level; threads go at most $max levels deep");
         }
     }
     $now = now();

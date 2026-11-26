@@ -59,7 +59,7 @@ sa_api() { KOMBINAT_DATA=$data php -f "$here/src/api.php"; }
 expect 0 sa add "Write docs"
 [[ $out == "Added task #1 (idea): Write docs" ]] || fail "standalone add: $out"
 expect 0 sa update 1 --status planned --priority 2
-[[ $out == "Updated task #1: status: idea → planned, priority: 0 → 2" ]] || fail "standalone update: $out"
+[[ $out == "Updated task #1: status=planned, priority=2" ]] || fail "standalone update: $out"
 expect 0 sa comment add 1 "Start with the CLI"
 expect 0 sa comment add 1 "Agreed" --reply-to 1 --author ala
 expect 0 sa --json show 1
@@ -104,7 +104,7 @@ expect 0 run --json list
 logged
 
 expect 0 run update 1 --status running
-[[ $out == "Updated task #1: status: planned → running" ]] || fail "update: $out"
+[[ $out == "Updated task #1: status=running" ]] || fail "update: $out"
 logged tasks.update
 [[ $(jq -r '.[0].payload.changes.status | .from + ">" + .to' <<<"$log") == "planned>running" ]] || fail "update event: $log"
 
@@ -155,6 +155,10 @@ printf '[tasks]\ndefault_status = "planned"\n' >"$root/config/tasks.local.toml"
 expect 0 run add "Configured"
 [[ $out == "Added task #3 (planned): Configured" ]] || fail "config default_status: $out"
 logged tasks.add
+printf '[comments]\nmax_depth = 2\n' >"$root/config/tasks.local.toml"
+expect 4 run comment add 1 "Too deep" --reply-to 2
+[[ $err == *"at most 2 levels"* ]] || fail "thread depth must be capped: $err"
+logged
 printf '[tasks]\ndefault_status = "bogus"\n' >"$root/config/tasks.local.toml"
 expect 5 run list
 [[ $err == *"tasks.default_status"* ]] || fail "bad config must name its key: $err"

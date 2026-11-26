@@ -38,7 +38,14 @@ function api_main(array $argv): int
     } else {
         [$doc, $code] = respond(get_object_vars($req));
     }
-    fwrite(STDOUT, json_encode($doc, JSON_FLAGS | JSON_INVALID_UTF8_SUBSTITUTE) . "\n");
+    try {
+        $out = json_encode($doc, JSON_FLAGS | JSON_INVALID_UTF8_SUBSTITUTE);
+    } catch (\JsonException $e) {
+        // Still exactly one document: the answer could not be encoded.
+        $code = EXIT_CODES['internal'];
+        $out = json_encode(['ok' => false, 'op' => $doc['op'] ?? null, 'error' => ['code' => 'internal', 'message' => 'the answer could not be encoded: ' . $e->getMessage()]], JSON_FLAGS | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+    fwrite(STDOUT, $out . "\n");
     return $code;
 }
 

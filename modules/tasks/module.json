@@ -31,6 +31,7 @@
       "tasks.body_max_bytes",
       "comments.default_author",
       "comments.text_max_bytes",
+      "comments.max_depth",
       "list.default_limit",
       "list.max_limit",
       "storage.busy_timeout_ms"

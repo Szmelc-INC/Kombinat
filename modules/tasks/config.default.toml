@@ -18,6 +18,8 @@ body_max_bytes = 16384
 default_author = "operator"
 # integer, 1 to 262144 — the longest comment text in bytes.
 text_max_bytes = 8192
+# integer, 1 to 100 — how many levels a thread may nest; a top-level comment is level 1, 1 allows no replies.
+max_depth = 32
 
 [list]
 # integer, 1 to list.max_limit — how many tasks `list` returns when the request sets no limit.
