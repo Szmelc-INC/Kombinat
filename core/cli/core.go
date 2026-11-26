@@ -52,6 +52,7 @@ func (env *Env) OpenCore() *Core {
 	runner := &modules.Runner{
 		Manager:  mgr,
 		CacheDir: reg.Path(CacheDir),
+		DataDir:  reg.Path(DataDir),
 		Timeout:  time.Duration(config.Int(reg.Core, "runtime.timeout_seconds")) * time.Second,
 		Path:     env.Getenv("PATH"),
 	}
@@ -60,6 +61,9 @@ func (env *Env) OpenCore() *Core {
 
 // CacheDir holds built Go entrypoints, relative to the root.
 const CacheDir = "var/cache/modules"
+
+// DataDir holds one private data directory per module, relative to the root.
+const DataDir = "var/modules"
 
 // parseFlags parses args into fs; a bad flag prints the command usage and
 // returns ok=false with ExitUsage.

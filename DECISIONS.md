@@ -90,3 +90,13 @@ Every deviation from `AGENTS.md`, `docs/CONVENTIONS.md` or a `PROMPTS/` brief â€
 - Context: the earlier prompt pack (decision 1) wanted command-running routes to fail closed until an approvals module exists; `PROMPTS/CORE.md` asks for no such gate.
 - Decision: running an entrypoint of a module the operator enabled needs only a valid token. Approvals, policies and capabilities stay modules from the porting queue; the first of them proposes the smallest core hook (a pre-run check) in a `core-change` issue.
 - Consequence: until that hook lands, every token holder may run every running module; tokens therefore stay local (`secrets/`, mode 0600) and the API stays on `127.0.0.1`.
+
+## 19. Module data and module events
+- Context: a one-shot run (decision 17) had no place for module data, so state would land in the tracked module directory, and no way to log its own actions, though `PROMPTS/PORT.md` asks for an event for every action.
+- Decision: every run gets `KOMBINAT_DATA`, the module's private directory `var/modules/NAME` (mode 0700, kept across runs), and `KOMBINAT_EVENTS`, a fresh file for this run. After the run the core appends each line as one event if it is a strict JSON object with `action`, `subject`, `summary` and `payload`, its action is inside the `NAME.*` namespace, and it passes the event log's own checks: redaction, at most 100 events per run. The run's actor is the actor of these events. A rejected line is listed with its reason in the run result and in the `core.module.run` payload, which also counts the accepted events; module events precede that run event in the log.
+- Consequence: a module keeps its state in files or its own SQLite database under `KOMBINAT_DATA`, never in its source tree. It still cannot read the event log or call the API; that need goes to a `core-change` issue. Run standalone, a module treats an unset `KOMBINAT_EVENTS` as "do not log".
+
+## 20. Module tests in make check
+- Context: `PROMPTS/PORT.md` requires module tests to pass, but `make check` ran none, so each porter would have edited the `Makefile` or CI.
+- Decision: a module's tests are `modules/NAME/tests/*.sh`, run by `make modules-test` (part of `make check`) with `KOMBINAT_BIN` pointing at the built core; a test makes its own throwaway root. A module with its own `go.mod` also gets `go vet` and `go test` in its directory. Shell sources and tests of every module are shellchecked; CI provides PHP with SQLite.
+- Consequence: porting a module never touches the `Makefile` or CI; `modules/hello/tests/hello.sh` is the example.

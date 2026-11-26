@@ -6,7 +6,9 @@
   "depends": [],
   "provides": {
     "api": [],
-    "events": [],
+    "events": [
+      "hello.greeted"
+    ],
     "capabilities": [],
     "config": [
       "enabled",
