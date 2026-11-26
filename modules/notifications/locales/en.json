@@ -1,0 +1,15 @@
+{
+  "module.notifications.title": "Notifications",
+  "module.notifications.description": "Reaches the human: desktop notifications, at most one sound per interval, a mute switch, optional speech; every notification is an event.",
+  "module.notifications.level.info": "Info",
+  "module.notifications.level.attention": "Attention needed",
+  "module.notifications.level.done": "Done",
+  "module.notifications.level.error": "Error",
+  "module.notifications.level.elevated": "Elevated command",
+  "module.notifications.mute": "Mute sounds and speech",
+  "module.notifications.unmute": "Unmute sounds and speech",
+  "module.notifications.muted": "Sounds and speech are muted",
+  "module.notifications.unmuted": "Sounds and speech are on",
+  "module.notifications.rate_limited": "Sound skipped: at most one per interval",
+  "module.notifications.fetch_sounds": "Fetch the sound pack"
+}

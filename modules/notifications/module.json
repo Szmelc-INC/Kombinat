@@ -1,0 +1,61 @@
+{
+  "name": "notifications",
+  "display_name": "Notifications",
+  "version": "0.1.0",
+  "description": "Reaches the human: desktop notifications at five levels, at most one sound per interval, a mute switch, optional speech and a sound pack fetcher; every notification is an event.",
+  "depends": [],
+  "provides": {
+    "api": [],
+    "events": [
+      "notifications.sent",
+      "notifications.muted",
+      "notifications.unmuted",
+      "notifications.sounds.fetched"
+    ],
+    "capabilities": [],
+    "config": [
+      "enabled",
+      "module.app_name",
+      "module.sound_interval_seconds",
+      "module.find_session",
+      "module.notifier.command",
+      "module.player.command",
+      "module.speech.enabled",
+      "module.speech.command",
+      "module.speech.levels",
+      "module.speech.max_bytes",
+      "module.fetch.timeout_seconds",
+      "module.fetch.max_bytes",
+      "module.levels.info.desktop",
+      "module.levels.info.urgency",
+      "module.levels.info.sound",
+      "module.levels.info.source",
+      "module.levels.attention.desktop",
+      "module.levels.attention.urgency",
+      "module.levels.attention.sound",
+      "module.levels.attention.source",
+      "module.levels.done.desktop",
+      "module.levels.done.urgency",
+      "module.levels.done.sound",
+      "module.levels.done.source",
+      "module.levels.error.desktop",
+      "module.levels.error.urgency",
+      "module.levels.error.sound",
+      "module.levels.error.source",
+      "module.levels.elevated.desktop",
+      "module.levels.elevated.urgency",
+      "module.levels.elevated.sound",
+      "module.levels.elevated.source"
+    ]
+  },
+  "entrypoints": {
+    "api": false,
+    "cli": true,
+    "ui": false,
+    "worker": false
+  },
+  "locales": [
+    "en",
+    "pl"
+  ]
+}

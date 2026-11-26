@@ -1,0 +1,92 @@
+# Notifications — exhaustive defaults.
+# Every key the code reads appears here (AGENTS.md: no hidden state); runtime values come from the core config store.
+# Commands are one string split on blanks (no quoting, no shell); the module appends the message as separate arguments or stdin.
+
+# boolean — whether the module is on before any `kombinat module enable` or `disable` ran.
+enabled = false
+
+[module]
+# string — the application name the desktop popup shows (`-a` of the notifier).
+app_name = "Kombinat"
+# integer — seconds between two audible alerts (a sound or a spoken line); 0 turns the limit off. Default 120.
+sound_interval_seconds = 120
+# boolean — when the run has no XDG_RUNTIME_DIR or DBUS_SESSION_BUS_ADDRESS, use the user's own /run/user/UID and its bus socket. Default true.
+find_session = true
+
+[module.notifier]
+# string — the desktop notifier; called as COMMAND -a APP -u URGENCY -- TITLE BODY; "" turns popups off. Default "notify-send".
+command = "notify-send"
+
+[module.player]
+# string — the sound player; called as COMMAND FILE; "" turns sounds off. Default "pw-play".
+command = "pw-play"
+
+[module.speech]
+# boolean — whether notifications are also spoken. Default false.
+enabled = false
+# string — the speech command; it reads "TITLE. BODY" on stdin; "" turns speech off. Default "espeak-ng --stdin".
+command = "espeak-ng --stdin"
+# array of strings — the levels that are spoken. Default ["attention", "error", "elevated"].
+levels = ["attention", "error", "elevated"]
+# integer — at most this many bytes of text are spoken. Default 300.
+max_bytes = 300
+
+[module.fetch]
+# integer — seconds `fetch-sounds` waits for one file. Default 6.
+timeout_seconds = 6
+# integer — the largest sound file `fetch-sounds` accepts, in bytes. Default 2000000.
+max_bytes = 2000000
+
+# One table per level. desktop: boolean, show a popup. urgency: string, low | normal | critical.
+# sound: string, a plain file name in KOMBINAT_DATA/sounds ("" = silent level).
+# source: string, an https:// or file:// URL that `fetch-sounds` copies the sound from ("" = none).
+
+[module.levels.info]
+# boolean — popup for info notifications. Default false (info goes to the log only).
+desktop = false
+# string — urgency for info. Default "low".
+urgency = "low"
+# string — sound file for info. Default "" (silent).
+sound = ""
+# string — where `fetch-sounds` gets the info sound. Default "".
+source = ""
+
+[module.levels.attention]
+# boolean — popup when an answer or approval is needed. Default true.
+desktop = true
+# string — urgency for attention. Default "normal".
+urgency = "normal"
+# string — sound file for attention. Default "attention.oga".
+sound = "attention.oga"
+# string — where `fetch-sounds` gets the attention sound. Default the freedesktop sound theme's message-new-instant.oga.
+source = "file:///usr/share/sounds/freedesktop/stereo/message-new-instant.oga"
+
+[module.levels.done]
+# boolean — popup when a task or phase finished. Default true.
+desktop = true
+# string — urgency for done. Default "normal".
+urgency = "normal"
+# string — sound file for done. Default "done.oga".
+sound = "done.oga"
+# string — where `fetch-sounds` gets the done sound. Default the freedesktop sound theme's complete.oga.
+source = "file:///usr/share/sounds/freedesktop/stereo/complete.oga"
+
+[module.levels.error]
+# boolean — popup when something failed or is blocked. Default true.
+desktop = true
+# string — urgency for error. Default "critical".
+urgency = "critical"
+# string — sound file for error. Default "error.oga".
+sound = "error.oga"
+# string — where `fetch-sounds` gets the error sound. Default the freedesktop sound theme's dialog-warning.oga.
+source = "file:///usr/share/sounds/freedesktop/stereo/dialog-warning.oga"
+
+[module.levels.elevated]
+# boolean — popup right before an elevated command asks for a password (name the exact command in the body). Default true.
+desktop = true
+# string — urgency for elevated. Default "critical".
+urgency = "critical"
+# string — sound file for elevated. Default "elevated.oga".
+sound = "elevated.oga"
+# string — where `fetch-sounds` gets the elevated sound. Default the freedesktop sound theme's dialog-information.oga.
+source = "file:///usr/share/sounds/freedesktop/stereo/dialog-information.oga"
