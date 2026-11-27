@@ -83,7 +83,7 @@ func Load(root string) (*Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	core, errs := overlay(root, CoreName, defaults)
+	core, errs := overlay(root, CoreName, defaults, checkCore)
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -117,7 +117,7 @@ func Load(root string) (*Registry, error) {
 			reg.Problems = append(reg.Problems, err.(*Error))
 			continue
 		}
-		merged, errs := overlay(root, name, defs)
+		merged, errs := overlay(root, name, defs, nil)
 		if len(errs) > 0 {
 			reg.Problems = append(reg.Problems, errs...)
 			continue
@@ -125,6 +125,23 @@ func Load(root string) (*Registry, error) {
 		reg.Modules[name] = merged
 	}
 	return reg, nil
+}
+
+// checkCore enforces the core value ranges that types alone cannot express,
+// on one override file.
+func checkCore(file string, over Table) Errors {
+	var errs Errors
+	if v, ok := Lookup(over, "api.port"); ok {
+		if p := v.(int64); p < 0 || p > 65535 {
+			errs = append(errs, &Error{File: file, Key: "api.port", Msg: fmt.Sprintf("must be 0-65535, got %d", p)})
+		}
+	}
+	for _, key := range []string{"modules.dir", "store.path"} {
+		if v, ok := Lookup(over, key); ok && v.(string) == "" {
+			errs = append(errs, &Error{File: file, Key: key, Msg: "must not be empty"})
+		}
+	}
+	return errs
 }
 
 // Path resolves p against the root unless it is absolute.
@@ -135,8 +152,9 @@ func (r *Registry) Path(p string) string {
 	return filepath.Join(r.Root, p)
 }
 
-// overlay applies config/<name>.toml, then config/<name>.local.toml, onto defaults.
-func overlay(root, name string, defaults Table) (Table, Errors) {
+// overlay applies config/<name>.toml, then config/<name>.local.toml, onto
+// defaults; check, when set, adds value checks per override file.
+func overlay(root, name string, defaults Table, check func(file string, over Table) Errors) (Table, Errors) {
 	merged := defaults
 	var errs Errors
 	for _, file := range []string{name + ".toml", name + ".local.toml"} {
@@ -154,7 +172,11 @@ func overlay(root, name string, defaults Table) (Table, Errors) {
 			errs = append(errs, err.(*Error))
 			continue
 		}
-		if ve := validate(rel, "", defaults, over); len(ve) > 0 {
+		ve := validate(rel, "", defaults, over)
+		if len(ve) == 0 && check != nil {
+			ve = check(rel, over)
+		}
+		if len(ve) > 0 {
 			errs = append(errs, ve...)
 			continue
 		}

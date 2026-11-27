@@ -3,6 +3,15 @@
 # Override per Kombinat root in config/core.toml (tracked, team) and
 # config/core.local.toml (gitignored, personal); later files win.
 
+[api]
+# integer 0-65535 — TCP port on 127.0.0.1 (the only bind address). 0 picks a
+# free port; a busy port falls back to a free one, recorded in var/run/api.json.
+port = 2137
+
 [modules]
 # string — directory scanned for modules, relative to the Kombinat root.
 dir = "modules"
+
+[store]
+# string — SQLite database file (WAL mode), relative to the Kombinat root.
+path = "var/kombinat.db"
