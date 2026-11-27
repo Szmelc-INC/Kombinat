@@ -1,0 +1,32 @@
+# Tasks — exhaustive defaults.
+# Every key the code reads appears here (AGENTS.md: no hidden state); runtime values come from the core config store.
+# src/tasks.php mirrors these values for standalone runs; tests/tasks.sh checks that both agree.
+
+# boolean — whether the module is on before any `kombinat module enable` or `disable` ran.
+enabled = false
+
+[tasks]
+# string — the state of a new task when the request names none: idea, planned, queued, running, done, failed or dropped.
+default_status = "idea"
+# integer, 1 to 1000 — the longest title in bytes; a title is one line of text.
+title_max_bytes = 200
+# integer, 2 to 262144 — the longest body in bytes, measured as encoded JSON.
+body_max_bytes = 16384
+
+[comments]
+# string — the author of a comment that names none; a lowercase name (letters, digits, dot, hyphen), not verified.
+default_author = "operator"
+# integer, 1 to 262144 — the longest comment text in bytes.
+text_max_bytes = 8192
+# integer, 1 to 100 — how many levels a thread may nest; a top-level comment is level 1, 1 allows no replies.
+max_depth = 32
+
+[list]
+# integer, 1 to list.max_limit — how many tasks `list` returns when the request sets no limit.
+default_limit = 200
+# integer, 1 to 10000 — the highest limit a `list` request may ask for.
+max_limit = 1000
+
+[storage]
+# integer, 0 to 60000 — how long a run waits in milliseconds for another run's write lock on the database.
+busy_timeout_ms = 5000
