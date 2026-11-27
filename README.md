@@ -23,10 +23,27 @@ Lives at [Szmelc-INC/Kombinat](https://github.com/Szmelc-INC/Kombinat), part of 
 - Agents work as a team from one prompt set: [`AGENTS.md`](AGENTS.md) is the law, [`PROMPTS/`](PROMPTS/README.md) drives the build — so every contributor's agent works independently on shared goods without conflicts or duplicated work.
 
 ## Status
-`MkII` (also written `2.0` / `v2`) means the old Kombinat v1 architecture — branches included — refactored into the v2 format, the CI/CD way: **core design and framework first, then every v1 feature ported module by module**. This repo currently holds the conventions and the prompt suite that drive that build; the Go + PHP kernel arrives via [`PROMPTS/CORE.md`](PROMPTS/CORE.md). The old v1 stays private and read-only: source material only, never copied into v2.
+`MkII` (also written `2.0` / `v2`) means the old Kombinat v1 architecture — branches included — refactored into the v2 format, the CI/CD way: **core design and framework first, then every v1 feature ported module by module**. The core is built ([`PROMPTS/CORE.md`](PROMPTS/CORE.md)): config registry, append-only event log, module loader and runtime, HTTP JSON API and CLI, with the demo module [`hello`](modules/hello/MODULE.md). Next: the v1 audit into the porting queue, then one module per PR. The old v1 stays private and read-only: source material only, never copied into v2.
+
+## Quick start
+Needs Go (the version in `go.mod`), `make`, `curl` and `jq`.
+
+```sh
+make build                      # bin/kombinat, one static binary
+export KOMBINAT_ROOT=$PWD       # the Kombinat root: modules/, config/, var/, secrets/
+bin/kombinat serve &            # API on 127.0.0.1:2138; creates secrets/api_token on first run
+until [ -s var/run/api.json ]; do sleep 0.1; done   # written once the server is ready
+bin/kombinat module enable hello
+port=$(jq -r .port var/run/api.json)   # the live port, also after a busy-port fallback
+curl -s -H "Authorization: Bearer $(cat secrets/api_token)" "http://127.0.0.1:$port/api/modules/hello"
+bin/kombinat log --tail 1       # shows the core.module.enable event
+bin/kombinat module run hello Szmelc
+```
+
+The full check — lint, build, unit tests and the end-to-end smoke test — is `make check`; it also needs `shellcheck`, and `php` for the PHP runtime tests. `bin/kombinat --help` lists every command; `bin/kombinat completion bash|zsh|fish` prints completions (generated copies live in [`completions/`](completions/)). A busy port falls back to a free one, recorded in `var/run/api.json`.
 
 ## Stack
-`Go` + `PHP`, full cross-platform integration. Primary focus is always Linux (Arch > Nix > other), then Windows via WSL and macOS via zsh, by staying POSIX and Unix-like.
+`Go` core (one static binary, SQLite in WAL mode via a pure-Go driver); modules in `Go`, `PHP` or POSIX shell behind one contract. Primary focus is always Linux (Arch > Nix > other), then Windows via WSL and macOS via zsh, by staying POSIX and Unix-like.
 
 ## Locales
 1. **EN — English, primary:** code, comments, documentation, structure.
@@ -61,10 +78,13 @@ Lives at [Szmelc-INC/Kombinat](https://github.com/Szmelc-INC/Kombinat), part of 
 | [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) | The architecture spec: Kombinat 2.0 (MkII) → v3 "Logos" |
 | [`PROMPTS/`](PROMPTS/README.md) | The agent prompt suite that builds the system |
 | [`templates/module/`](templates/module/MODULE.md) | The Ultimate Module Format skeleton |
+| [`core/`](core/) | The Go spine: CLI, config, events, store, module loader and runtime, API |
+| [`modules/`](modules/) | One directory per module; [`hello`](modules/hello/MODULE.md) is the demo |
+| [`tests/smoke.sh`](tests/smoke.sh) | The end-to-end core check `make check` runs |
 | [`DECISIONS.md`](DECISIONS.md) | Every deviation: context → decision → consequence |
 
 ## How agents build it
-1. [`PROMPTS/CORE.md`](PROMPTS/CORE.md) — one agent builds the kernel once.
+1. [`PROMPTS/CORE.md`](PROMPTS/CORE.md) — one agent builds the kernel once (done: `core/`, `make check`; every choice the brief left open is in [`DECISIONS.md`](DECISIONS.md)).
 2. [`PROMPTS/AUDIT.md`](PROMPTS/AUDIT.md) — one agent inventories the private v1 into `docs/PORTING.md`, the single queue (the private source map stays local, in a gitignored `PORTING.local.md`).
 3. [`PROMPTS/PORT.md`](PROMPTS/PORT.md) — many agents in parallel, one queue row each: one feature = one module = one PR, every PR gated by [`PROMPTS/REVIEW.md`](PROMPTS/REVIEW.md), the whole program kept coherent by [`PROMPTS/MASTER.md`](PROMPTS/MASTER.md).
 
