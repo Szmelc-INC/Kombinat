@@ -1,0 +1,20 @@
+{
+  "module.tasks.title": "Zadania",
+  "module.tasks.description": "Zadania, pomysły i plany jako jeden typ z siedmioma stanami i komentarzami w wątkach.",
+  "module.tasks.status.idea": "Pomysł",
+  "module.tasks.status.planned": "Zaplanowane",
+  "module.tasks.status.queued": "W kolejce",
+  "module.tasks.status.running": "W toku",
+  "module.tasks.status.done": "Zrobione",
+  "module.tasks.status.failed": "Nieudane",
+  "module.tasks.status.dropped": "Porzucone",
+  "module.tasks.field.title": "Tytuł",
+  "module.tasks.field.status": "Stan",
+  "module.tasks.field.priority": "Priorytet",
+  "module.tasks.field.owner": "Właściciel",
+  "module.tasks.field.parent": "Zadanie nadrzędne",
+  "module.tasks.field.body": "Treść",
+  "module.tasks.comments": "Komentarze",
+  "module.tasks.reply": "Odpowiedz",
+  "module.tasks.empty": "Brak zadań."
+}
