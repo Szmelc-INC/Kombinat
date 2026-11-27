@@ -17,9 +17,10 @@ _kombinat() {
     return
   fi
   case $p in
-    '') vals=('completion:Print the shell completion script (bash, zsh, fish)' 'help:Show help for kombinat or one command' 'version:Print the core version') ;;
+    '') vals=('completion:Print the shell completion script (bash, zsh, fish)' 'config:Inspect the merged configuration' 'help:Show help for kombinat or one command' 'version:Print the core version') ;;
     'completion') vals=('bash' 'zsh' 'fish') ;;
-    'help') vals=('completion' 'help' 'version') ;;
+    'config') vals=('show:Print the merged config as JSON: core plus every module, or one of them') ;;
+    'help') vals=('completion' 'config' 'help' 'version') ;;
   esac
   (( ${#vals} )) && _describe -t values 'kombinat' vals
 }

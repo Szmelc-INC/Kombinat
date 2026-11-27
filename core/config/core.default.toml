@@ -1,0 +1,8 @@
+# Kombinat core — exhaustive defaults.
+# Every key the core reads appears here (AGENTS.md: no hidden state).
+# Override per Kombinat root in config/core.toml (tracked, team) and
+# config/core.local.toml (gitignored, personal); later files win.
+
+[modules]
+# string — directory scanned for modules, relative to the Kombinat root.
+dir = "modules"

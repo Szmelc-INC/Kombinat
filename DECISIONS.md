@@ -30,3 +30,13 @@ Every deviation from `AGENTS.md`, `docs/CONVENTIONS.md` or a `PROMPTS/` brief â€
 - Context: the owner's project rules ask any CLI project for a Go TUI (bubbletea, lipgloss, bubbles, glamour), an Arch `PKGBUILD` and a `flake.nix`; `PROMPTS/CORE.md` keeps the core to router, loader, config, events, store and CLI, stdlib first.
 - Decision: the TUI is a module (an interfaces module that reads and changes state only through the API), built after the core handoff; the `PKGBUILD` and `flake.nix` land in one packaging change right after phase 7, with their CI build steps.
 - Consequence: the core takes no Charm dependency; until the packaging change merges, `make build` is the only install path.
+
+## 7. TOML parser dependency
+- Context: module defaults are `config.default.toml`; Go's standard library has no TOML parser.
+- Decision: depend on `github.com/BurntSushi/toml` (MIT, no transitive dependencies), used only inside `core/config` behind one parse function.
+- Consequence: exit plan â€” swap the parse function for another parser or a hand-written TOML subset without touching callers; `go.sum` pins the version.
+
+## 8. Config layers, root and validation
+- Context: `PROMPTS/CORE.md` asks for core config plus per-module defaults, merged and type-validated, without fixing file locations.
+- Decision: the Kombinat root is `KOMBINAT_ROOT`, else the working directory. Layers, later wins: built-in `core/config/core.default.toml` or `modules/NAME/config.default.toml`, then `config/NAME.toml` (tracked, team), then `config/NAME.local.toml` (gitignored, personal). The defaults are the schema: an override key must exist there with the same TOML type; tables merge, arrays and scalars replace. A core problem stops the command (exit 1, file and key named); a module problem leaves only that module out.
+- Consequence: no environment or flag layer per key yet; one arrives only when two real users need it. `kombinat config show` prints exactly what the core and modules see.
