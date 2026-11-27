@@ -3,6 +3,7 @@ package modules
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,7 +35,7 @@ func runFixture(t *testing.T, root, name string, timeout time.Duration) *Runner 
 	if _, err := mg.Enable(context.Background(), name, "test"); err != nil {
 		t.Fatal(err)
 	}
-	return &Runner{Manager: mg, CacheDir: filepath.Join(t.TempDir(), "cache"), Timeout: timeout, Path: os.Getenv("PATH")}
+	return &Runner{Manager: mg, CacheDir: filepath.Join(t.TempDir(), "cache"), DataDir: filepath.Join(t.TempDir(), "data"), Timeout: timeout, Path: os.Getenv("PATH")}
 }
 
 func shellModule(t *testing.T, root, name, script string) {
@@ -148,6 +149,47 @@ func TestRunGo(t *testing.T) {
 	res, err := r.Run(context.Background(), "go-mod", RunRequest{Args: []string{"y"}}, "test")
 	if err != nil || res.Status != StatusOK || res.Stdout != "go y go-mod\n" {
 		t.Fatalf("go run: %+v %v", res, err)
+	}
+}
+
+func TestRunDataDirAndModuleEvents(t *testing.T) {
+	root := t.TempDir()
+	script := `n=$(cat "$KOMBINAT_DATA/count" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" >"$KOMBINAT_DATA/count"
+echo '{"action":"notes.added","summary":"note","payload":{"n":1,"token":"s3cret"}}' >>"$KOMBINAT_EVENTS"
+echo '{"action":"core.module.enable","summary":"forged"}' >>"$KOMBINAT_EVENTS"
+echo 'not json' >>"$KOMBINAT_EVENTS"
+echo '{"action":"notes.x","extra":1}' >>"$KOMBINAT_EVENTS"
+echo "count $n"
+`
+	shellModule(t, root, "notes", script)
+	r := runFixture(t, root, "notes", 5*time.Second)
+	ctx := context.Background()
+	for want := 1; want <= 2; want++ {
+		res, err := r.Run(ctx, "notes", RunRequest{}, "test")
+		if err != nil || res.Status != StatusOK || res.Stdout != fmt.Sprintf("count %d\n", want) {
+			t.Fatalf("run %d: %+v %v", want, res, err)
+		}
+		if res.Events != 1 || len(res.EventsRejected) != 3 {
+			t.Fatalf("run %d events: %d accepted, rejected %q", want, res.Events, res.EventsRejected)
+		}
+	}
+	if info, err := os.Stat(filepath.Join(r.DataDir, "notes")); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("data dir: %v %v", info, err)
+	}
+	if left, _ := filepath.Glob(filepath.Join(r.DataDir, "notes", ".events-*")); len(left) != 0 {
+		t.Fatalf("events files left behind: %v", left)
+	}
+	list, _ := r.Manager.Log.List(ctx, eventsQuery(10))
+	var got []string
+	for _, e := range list {
+		got = append(got, e.Action+"/"+e.Actor)
+		if e.Action == "notes.added" && e.Payload["token"] != "[redacted]" {
+			t.Fatalf("module event payload not redacted: %v", e.Payload)
+		}
+	}
+	want := "core.module.enable/test,notes.added/test,core.module.run/test,notes.added/test,core.module.run/test"
+	if strings.Join(got, ",") != want {
+		t.Fatalf("log:\n got %s\nwant %s", strings.Join(got, ","), want)
 	}
 }
 

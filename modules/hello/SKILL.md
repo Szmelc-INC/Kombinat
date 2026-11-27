@@ -9,4 +9,4 @@ license: MIT
 
 1. Greet: `kombinat module run hello "NAME"` (or `POST /api/modules/hello/run` with `{"args": ["NAME"]}`) prints `Hello, NAME!` and logs `core.module.run`; without a name it greets `module.name` (default `world`). Standalone: `sh modules/hello/src/cli.sh "NAME"`.
 2. Check the contract: `kombinat module enable hello`, then `kombinat module ls` shows `running` and `GET /api/modules/hello` answers 200; `kombinat module disable hello`, then the route answers 404 and `kombinat log --tail 1` shows `core.module.disable`.
-3. Boundaries: Hello reads no files, opens no network connection and keeps no state; the lifecycle calls are gated by `ASSERTIONS.md`.
+3. Boundaries: Hello reads no files, opens no network connection and keeps no state (its `KOMBINAT_DATA` directory stays empty); it writes only one `hello.greeted` event per run; the lifecycle calls are gated by `ASSERTIONS.md`.

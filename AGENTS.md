@@ -6,7 +6,7 @@
 - `docs/CONVENTIONS.md` (the v2 → v3 architecture law); deviations land in `DECISIONS.md`.
 
 ## Commands
-- Check: `make check` — run before every push; CI runs exactly this. It is `make lint` (gofmt, `go vet`, `shellcheck tools/*.sh tests/*.sh`, `bash tools/lint.sh`), then `make build` (`bin/kombinat`, static, `CGO_ENABLED=0`), `make test` (`go test ./...`, including every repo module's validation) and `make smoke` (`tests/smoke.sh` walks the core end to end on a throwaway root).
+- Check: `make check` — run before every push; CI runs exactly this. It is `make lint` (gofmt, `go vet`, `shellcheck` over `tools/`, `tests/` and every module's `src/*.sh` and `tests/*.sh`, `bash tools/lint.sh`), then `make build` (`bin/kombinat`, static, `CGO_ENABLED=0`), `make test` (`go test ./...`, including every repo module's validation), `make smoke` (`tests/smoke.sh` walks the core end to end on a throwaway root) and `make modules-test` (every `modules/NAME/tests/*.sh` with `KOMBINAT_BIN` set, plus `go vet` and `go test` in each module with its own `go.mod`).
 - After a CLI change: `make completions`, and commit the regenerated `completions/`; a test fails while they drift.
 - One module: `bin/kombinat module check` validates every module under the root; run a module with `bin/kombinat module run NAME`.
 - Tooling: Go per `go.mod`, `make`, `jq`, `curl`, `shellcheck`; `php` for PHP modules (CI sets `KOMBINAT_REQUIRE_RUNTIMES=1`, so a missing runtime fails instead of skipping).
@@ -49,7 +49,7 @@
 
 ## Gotchas
 - The Kombinat root is `KOMBINAT_ROOT`, else the working directory; running the core there writes `var/` (database, runtime file) and `secrets/` (API tokens), both gitignored.
-- A module entrypoint is exactly one of `src/KIND.sh`, `src/KIND.php` or `src/KIND/main.go` (Go modules carry their own `go.mod`); it gets config through `KOMBINAT_CONFIG` and `KOMBINAT_CFG_*` (`DECISIONS.md` 13 and 17).
+- A module entrypoint is exactly one of `src/KIND.sh`, `src/KIND.php` or `src/KIND/main.go` (Go modules carry their own `go.mod`); it gets config through `KOMBINAT_CONFIG` and `KOMBINAT_CFG_*`, keeps its data only in `KOMBINAT_DATA`, and emits its own `NAME.*` events as JSON lines into `KOMBINAT_EVENTS` (`DECISIONS.md` 13, 17 and 19). Module tests live in `modules/NAME/tests/*.sh` (`DECISIONS.md` 20).
 - A new or edited module directory needs a `kombinat serve` restart; lifecycle changes apply at once.
 - `docs/PORTING.md` does not exist until `PROMPTS/AUDIT.md` runs; never invent queue rows ad hoc.
 - Conventions paths like `CONVENTIONS/WORKFLOW/COMMITS.md` resolve against the installed szmelc conventions repo, not against this repo.

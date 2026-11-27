@@ -5,7 +5,8 @@
 - Input: an optional name as the first CLI argument; without it, the `module.name` config key (the core passes it as `KOMBINAT_CFG_MODULE_NAME`), else `world`.
 - Processing: none; the CLI entrypoint `src/cli.sh` (POSIX shell) formats one line.
 - Output: `Hello, NAME!` on stdout, exit code 0.
-- Mesh: while the module is running, `GET /api/modules/hello` answers its manifest and state, and `POST /api/modules/hello/run` (or `kombinat module run hello`) runs the CLI entrypoint; disabled or stopped, both answer 404. The core logs `core.module.enable`, `core.module.disable`, `core.module.start`, `core.module.stop` and `core.module.run` for it; the module itself emits no events and adds no API routes.
+- Mesh: while the module is running, `GET /api/modules/hello` answers its manifest and state, and `POST /api/modules/hello/run` (or `kombinat module run hello`) runs the CLI entrypoint; disabled or stopped, both answer 404. The core logs `core.module.enable`, `core.module.disable`, `core.module.start`, `core.module.stop` and `core.module.run` for it; each mesh run also emits `hello.greeted` through `KOMBINAT_EVENTS`. The module adds no API routes and keeps no data.
+- Tests: `tests/hello.sh` (run by `make modules-test`) checks the standalone run, the mesh run, the events and the disabled path.
 
 ## Configuration
 - `enabled` (boolean, default `false`) — whether the module is on before any `kombinat module enable` or `disable` ran; after that the stored lifecycle state wins.

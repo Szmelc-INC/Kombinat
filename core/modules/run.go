@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -36,6 +37,9 @@ const (
 	MaxStdout     = 1 << 20
 	MaxStderr     = 64 << 10
 	EventOutLimit = 4 << 10
+	// MaxModuleEvents caps the events one run may emit through KOMBINAT_EVENTS.
+	MaxModuleEvents = 100
+	maxEventLine    = 64 << 10
 )
 
 // RunRequest asks for one entrypoint run.
@@ -57,7 +61,10 @@ type RunResult struct {
 	Stderr     string `json:"stderr"`
 	Truncated  bool   `json:"truncated,omitempty"`
 	Error      string `json:"error,omitempty"`
-	EventID    int64  `json:"event_id"`
+	// Events and EventsRejected count the module's own events (KOMBINAT_EVENTS).
+	Events         int      `json:"events"`
+	EventsRejected []string `json:"events_rejected,omitempty"`
+	EventID        int64    `json:"event_id"`
 }
 
 // Runner executes module entrypoints.
@@ -65,7 +72,9 @@ type Runner struct {
 	Manager *Manager
 	// CacheDir holds built Go entrypoints.
 	CacheDir string
-	Timeout  time.Duration
+	// DataDir holds one private data directory per module (DataDir/NAME).
+	DataDir string
+	Timeout time.Duration
 	// Path is the PATH a child sees and runtimes are looked up in.
 	Path string
 }
@@ -107,9 +116,22 @@ func (r *Runner) Run(ctx context.Context, name string, req RunRequest, actor str
 	}
 
 	res := RunResult{Module: name, Entrypoint: ep.Kind, Lang: ep.Lang, ExitCode: -1}
+	data := filepath.Join(r.DataDir, name)
+	if err := os.MkdirAll(data, 0o700); err != nil {
+		return RunResult{}, fmt.Errorf("module data dir: %w", err)
+	}
+	evf, err := os.CreateTemp(data, ".events-*.jsonl")
+	if err != nil {
+		return RunResult{}, fmt.Errorf("module events file: %w", err)
+	}
+	evf.Close()
+	defer os.Remove(evf.Name())
 	start := time.Now()
-	r.exec(ctx, m, ep, req, &res)
+	r.exec(ctx, m, ep, req, []string{"KOMBINAT_DATA=" + data, "KOMBINAT_EVENTS=" + evf.Name()}, &res)
 	res.DurationMS = time.Since(start).Milliseconds()
+	if err := r.moduleEvents(ctx, name, evf.Name(), actor, &res); err != nil {
+		return res, err
+	}
 
 	payload := map[string]any{
 		"entrypoint":  res.Entrypoint,
@@ -120,6 +142,10 @@ func (r *Runner) Run(ctx context.Context, name string, req RunRequest, actor str
 		"args":        len(req.Args),
 		"stdout":      capText(res.Stdout, EventOutLimit),
 		"stderr":      capText(res.Stderr, EventOutLimit/2),
+		"events":      res.Events,
+	}
+	if len(res.EventsRejected) > 0 {
+		payload["events_rejected"] = res.EventsRejected
 	}
 	if res.Error != "" {
 		payload["error"] = res.Error
@@ -134,7 +160,7 @@ func (r *Runner) Run(ctx context.Context, name string, req RunRequest, actor str
 }
 
 // exec runs the entrypoint and fills res.
-func (r *Runner) exec(ctx context.Context, m *Module, ep Entrypoint, req RunRequest, res *RunResult) {
+func (r *Runner) exec(ctx context.Context, m *Module, ep Entrypoint, req RunRequest, extraEnv []string, res *RunResult) {
 	argv, err := r.command(ctx, m, ep)
 	if err != nil {
 		res.Status, res.Error = StatusRuntimeMissing, err.Error()
@@ -144,7 +170,7 @@ func (r *Runner) exec(ctx context.Context, m *Module, ep Entrypoint, req RunRequ
 	defer cancel()
 	cmd := exec.CommandContext(ctx, argv[0], append(argv[1:], req.Args...)...)
 	cmd.Dir = m.Dir
-	cmd.Env = r.env(m)
+	cmd.Env = append(r.env(m), extraEnv...)
 	cmd.Stdin = strings.NewReader(req.Stdin)
 	stdout := &capped{max: MaxStdout}
 	stderr := &capped{max: MaxStderr, tail: true}
@@ -166,6 +192,70 @@ func (r *Runner) exec(ctx context.Context, m *Module, ep Entrypoint, req RunRequ
 	default:
 		res.Status, res.Error = StatusFailed, err.Error()
 	}
+}
+
+// moduleEvent is one line a module writes to KOMBINAT_EVENTS.
+type moduleEvent struct {
+	Action  string         `json:"action"`
+	Subject string         `json:"subject"`
+	Summary string         `json:"summary"`
+	Payload map[string]any `json:"payload"`
+}
+
+// moduleEvents appends the events a run wrote to its events file, one JSON
+// object per line, each under the module's own namespace (NAME.*), acting as
+// the run's actor. Bad lines are rejected with a reason, never half-applied.
+func (r *Runner) moduleEvents(ctx context.Context, name, path, actor string, res *RunResult) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("module events file: %w", err)
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 4096), maxEventLine)
+	line := 0
+	reject := func(why string) {
+		res.EventsRejected = append(res.EventsRejected, fmt.Sprintf("line %d: %s", line, why))
+	}
+	for sc.Scan() {
+		line++
+		text := strings.TrimSpace(sc.Text())
+		if text == "" {
+			continue
+		}
+		if res.Events >= MaxModuleEvents {
+			reject(fmt.Sprintf("more than %d events in one run", MaxModuleEvents))
+			break
+		}
+		var me moduleEvent
+		dec := json.NewDecoder(strings.NewReader(text))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&me); err != nil {
+			reject("not one strict JSON event object: " + err.Error())
+			continue
+		}
+		if !strings.HasPrefix(me.Action, name+".") {
+			reject(fmt.Sprintf("action %q is outside the %s.* namespace", me.Action, name))
+			continue
+		}
+		if me.Subject == "" {
+			me.Subject = name
+		}
+		_, err := r.Manager.Log.Append(ctx, events.Event{Actor: actor, Action: me.Action, Subject: me.Subject, Summary: me.Summary, Payload: me.Payload})
+		if errors.Is(err, events.ErrInvalid) {
+			reject(err.Error())
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		res.Events++
+	}
+	if err := sc.Err(); err != nil {
+		line++
+		reject("unreadable: " + err.Error())
+	}
+	return nil
 }
 
 // command returns argv for an entrypoint, or an error naming the missing runtime.
