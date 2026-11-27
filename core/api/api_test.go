@@ -108,6 +108,7 @@ func newFixture() fixture {
 		Modules: &modules.Manager{Modules: []*modules.Module{bad, off, on}, Store: &memStates{states: map[string]store.ModuleState{}, log: log}, Log: events.New(log)},
 		Tokens:  Tokens{token: "api", agentToken: "agent-1"},
 	}
+	srv.Runner = &modules.Runner{Manager: srv.Modules}
 	return fixture{srv.Handler(port), log}
 }
 
@@ -169,6 +170,9 @@ func TestRoutesAnswerTheRightStatus(t *testing.T) {
 		{"POST", "/api/modules/bad/enable", "{}", http.StatusUnprocessableEntity},
 		{"POST", "/api/modules/ghost/enable", "{}", http.StatusNotFound},
 		{"POST", "/api/modules/on/explode", "{}", http.StatusNotFound},
+		{"POST", "/api/modules/on/run", `{"entrypoint":"cli"}`, http.StatusBadRequest},
+		{"POST", "/api/modules/on/run", `{"command":"rm"}`, http.StatusBadRequest},
+		{"POST", "/api/modules/off/run", "{}", http.StatusNotFound},
 		{"POST", "/api/modules/off/enable", "", http.StatusOK},
 		{"GET", "/api/modules/off", "", http.StatusOK},
 		{"POST", "/api/modules/off/disable", `{}`, http.StatusOK},

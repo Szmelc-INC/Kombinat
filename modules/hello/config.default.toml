@@ -5,4 +5,5 @@
 enabled = false
 
 [module]
-# Hello reads no module keys yet.
+# string — who the greeting addresses when the run passes no name.
+name = "world"

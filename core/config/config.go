@@ -143,6 +143,11 @@ func checkCore(file string, over Table) Errors {
 			errs = append(errs, &Error{File: file, Key: "api.port", Msg: fmt.Sprintf("must be 0-65535, got %d", p)})
 		}
 	}
+	if v, ok := Lookup(over, "runtime.timeout_seconds"); ok {
+		if n := v.(int64); n < 1 || n > 3600 {
+			errs = append(errs, &Error{File: file, Key: "runtime.timeout_seconds", Msg: fmt.Sprintf("must be 1-3600, got %d", n)})
+		}
+	}
 	for _, key := range []string{"modules.dir", "store.path"} {
 		if v, ok := Lookup(over, key); ok && v.(string) == "" {
 			errs = append(errs, &Error{File: file, Key: key, Msg: "must not be empty"})

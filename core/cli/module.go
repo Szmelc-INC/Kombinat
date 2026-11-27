@@ -57,6 +57,7 @@ func moduleCommand() *Command {
 				Summary: "List every module with its version and state",
 				Run:     moduleList,
 			},
+			moduleRunCommand(),
 			lifecycle("start", "Start an enabled module that was stopped", (*modules.Manager).Start),
 			lifecycle("stop", "Stop a module without disabling it", (*modules.Manager).Stop),
 		},

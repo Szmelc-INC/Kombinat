@@ -169,10 +169,27 @@ api POST /api/modules/broken/enable '{}'
 [[ $status == 422 ]] || fail "POST enable invalid: $status $out"
 api POST /api/modules/ghost/enable '{}'
 [[ $status == 404 ]] || fail "POST enable unknown: $status $out"
+step "runtime: hello runs via the API; stdout, exit code and duration land in the log"
+api POST /api/modules/hello/run '{"args": ["Kombinat"]}'
+[[ $status == 200 && $(jq -r .data.stdout <<<"$out") == "Hello, Kombinat!" && $(jq -r .data.exit_code <<<"$out") == 0 ]] || fail "POST run: $status $out"
+expect 0 "$bin" --json log --tail 1
+[[ $(jq -r '.[0] | .action + " " + .subject + " " + .actor' <<<"$out") == "core.module.run hello api" ]] || fail "run event: $out"
+[[ $(jq -r '.[0].payload | "\(.stdout)|\(.exit_code)|\(.duration_ms >= 0)"' <<<"$out") == $'Hello, Kombinat!\n|0|true' ]] || fail "run payload: $out"
+expect 0 "$bin" log --tail 1
+[[ $out == *"core.module.run"*"hello cli: ok, exit 0"* ]] || fail "log --tail 1: $out"
+
+step "runtime: the CLI runs the same entrypoint with the merged config"
+printf '[module]\nname = "Szmelc"\n' >"$root/config/hello.local.toml"
+expect 0 "$bin" module run hello
+[[ $out == "Hello, Szmelc!" ]] || fail "module run with config: $out"
+rm "$root/config/hello.local.toml"
+
 api POST /api/modules/hello/disable '{}'
 [[ $status == 200 ]] || fail "POST disable: $status $out"
 expect 0 "$bin" --json log --tail 1
 [[ $(jq -r '.[0].action + " " + .[0].actor' <<<"$out") == "core.module.disable api" ]] || fail "API lifecycle event: $out"
+api POST /api/modules/hello/run '{}'
+[[ $status == 404 ]] || fail "run a disabled module: $status $out"
 stop_server
 
 step "hello runs standalone"
