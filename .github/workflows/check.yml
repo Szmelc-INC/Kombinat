@@ -1,0 +1,26 @@
+name: check
+on: [push, pull_request, merge_group, workflow_dispatch]
+permissions:
+  contents: read
+concurrency:
+  group: check-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: PHP runtime with SQLite for module tests
+        run: |
+          if ! php -m 2>/dev/null | grep -qx pdo_sqlite || ! php -m | grep -qx sqlite3; then
+            sudo apt-get update && sudo apt-get install -y php-cli php-sqlite3
+          fi
+          php --version
+          php -m | grep -E '^(pdo_sqlite|sqlite3)$'
+      - name: make check
+        env:
+          KOMBINAT_REQUIRE_RUNTIMES: "1"
+        run: make check

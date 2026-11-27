@@ -6,14 +6,17 @@
 - `docs/CONVENTIONS.md` (the v2 → v3 architecture law); deviations land in `DECISIONS.md`.
 
 ## Commands
-- Lint: `bash tools/lint.sh` — run before every push; CI runs it plus `shellcheck tools/*.sh`.
-- Core build, test, check: `make build`, `make test`, `make check` — added by `PROMPTS/CORE.md`; until the core exists, only the lint above is real.
+- Check: `make check` — run before every push; CI runs exactly this. It is `make lint` (gofmt, `go vet`, `shellcheck` over `tools/`, `tests/` and every module's `src/*.sh` and `tests/*.sh`, `bash tools/lint.sh`), then `make build` (`bin/kombinat`, static, `CGO_ENABLED=0`), `make test` (`go test ./...`, including every repo module's validation), `make smoke` (`tests/smoke.sh` walks the core end to end on a throwaway root) and `make modules-test` (every `modules/NAME/tests/*.sh` with `KOMBINAT_BIN` set, plus `go vet` and `go test` in each module with its own `go.mod`).
+- After a CLI change: `make completions`, and commit the regenerated `completions/`; a test fails while they drift.
+- One module: `bin/kombinat module check` validates every module under the root; run a module with `bin/kombinat module run NAME`.
+- Tooling: Go per `go.mod`, `make`, `jq`, `curl`, `shellcheck`; `php` for PHP modules (CI sets `KOMBINAT_REQUIRE_RUNTIMES=1`, so a missing runtime fails instead of skipping).
 
 ## Layout
 - `PROMPTS/` — the agent prompt suite: `CORE` (kernel), `AUDIT` (v1 → queue), `PORT` (one feature → one module), `REVIEW` (PR gate), `MASTER` (orchestrator).
 - `templates/module/` — the Ultimate Module Format skeleton; every module starts as a copy.
 - `modules/` — one directory per module.
-- `core/` — the hardcoded spine; added by `PROMPTS/CORE.md`.
+- `core/` — the hardcoded spine (Go): `cmd/kombinat`, `cli`, `config`, `events`, `store`, `modules` (loader, lifecycle, runtime), `api`.
+- `tests/smoke.sh` — the end-to-end core check; `completions/` — generated shell completions.
 - `docs/PORTING.md` — the single porting queue; created by `PROMPTS/AUDIT.md`.
 - `PORTING.local.md` — gitignored, local-only map from queue rows to private v1 sources.
 - `DECISIONS.md` — every deviation: context → decision → consequence.
@@ -34,6 +37,7 @@
 ## Workflow
 - One feature = one module = one PR on one branch (`feat/`, `fix/` or `docs/` plus the module name); commit titles per `CONVENTIONS/WORKFLOW/COMMITS.md`.
 - Porting: claim exactly one `docs/PORTING.md` row (Todo → In progress, your name + date) and push the claim before writing code; run `PROMPTS/PORT.md` for it.
+- Merge via PR only: `gh pr merge --merge` or `gh pr merge --rebase`, never squash; `sernik77`, `PolskiKocurek` and `hajtuszko` may review and merge.
 - A PR merges when: `tools/lint.sh` and module tests pass, self-review is done, a second agent or human ran `PROMPTS/REVIEW.md` with no P0/P1 open, and the queue row says Done.
 - Language policy per `CONVENTIONS/REPO/WRITING.md`: English in code, comments, docs, commits and issues; Polish only in chat with humans and in `locales/pl.json` strings.
 - Escalate to a human only for destructive, cross-repo or security-critical calls; everything else: decide, log in `DECISIONS.md`, continue.
@@ -44,7 +48,9 @@
 - Bind to `127.0.0.1` only, never `0.0.0.0`; quote and escape everything that reaches a shell, SQL, HTML or URL.
 
 ## Gotchas
-- The repo starts as prompts and templates only; `make` targets and `core/` arrive with `PROMPTS/CORE.md` — do not stub them by hand.
+- The Kombinat root is `KOMBINAT_ROOT`, else the working directory; running the core there writes `var/` (database, runtime file) and `secrets/` (API tokens), both gitignored.
+- A module entrypoint is exactly one of `src/KIND.sh`, `src/KIND.php` or `src/KIND/main.go` (Go modules carry their own `go.mod`); it gets config through `KOMBINAT_CONFIG` and `KOMBINAT_CFG_*`, keeps its data only in `KOMBINAT_DATA`, and emits its own `NAME.*` events as JSON lines into `KOMBINAT_EVENTS` (`DECISIONS.md` 13, 17 and 19). Module tests live in `modules/NAME/tests/*.sh` (`DECISIONS.md` 20).
+- A new or edited module directory needs a `kombinat serve` restart; lifecycle changes apply at once.
 - `docs/PORTING.md` does not exist until `PROMPTS/AUDIT.md` runs; never invent queue rows ad hoc.
 - Conventions paths like `CONVENTIONS/WORKFLOW/COMMITS.md` resolve against the installed szmelc conventions repo, not against this repo.
 - This repo is public: no v1 branch names, v1 paths or v1 code in any file, issue or PR.

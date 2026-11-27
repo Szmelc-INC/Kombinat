@@ -1,0 +1,28 @@
+{
+  "name": "hello",
+  "display_name": "Hello",
+  "version": "0.1.0",
+  "description": "The demo module: prints one greeting and proves the module contract end to end.",
+  "depends": [],
+  "provides": {
+    "api": [],
+    "events": [
+      "hello.greeted"
+    ],
+    "capabilities": [],
+    "config": [
+      "enabled",
+      "module.name"
+    ]
+  },
+  "entrypoints": {
+    "api": false,
+    "cli": true,
+    "ui": false,
+    "worker": false
+  },
+  "locales": [
+    "en",
+    "pl"
+  ]
+}

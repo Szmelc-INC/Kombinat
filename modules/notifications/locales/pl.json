@@ -1,0 +1,15 @@
+{
+  "module.notifications.title": "Powiadomienia",
+  "module.notifications.description": "Mówią człowiekowi, co się stało: powiadomienia na pulpicie, najwyżej jeden dźwięk na odstęp czasu, wyciszenie, opcjonalna mowa; każde powiadomienie to zdarzenie.",
+  "module.notifications.level.info": "Informacja",
+  "module.notifications.level.attention": "Potrzebna uwaga",
+  "module.notifications.level.done": "Gotowe",
+  "module.notifications.level.error": "Błąd",
+  "module.notifications.level.elevated": "Polecenie z uprawnieniami",
+  "module.notifications.mute": "Wycisz dźwięki i mowę",
+  "module.notifications.unmute": "Włącz dźwięki i mowę",
+  "module.notifications.muted": "Dźwięki i mowa są wyciszone",
+  "module.notifications.unmuted": "Dźwięki i mowa są włączone",
+  "module.notifications.rate_limited": "Dźwięk pominięty: najwyżej jeden na odstęp czasu",
+  "module.notifications.fetch_sounds": "Pobierz paczkę dźwięków"
+}

@@ -1,0 +1,9 @@
+# Hello — exhaustive defaults.
+# Every key the code reads appears here (AGENTS.md: no hidden state); runtime values come from the core config store.
+
+# boolean — whether the module is on before any `kombinat module enable` or `disable` ran.
+enabled = false
+
+[module]
+# string — who the greeting addresses when the run passes no name.
+name = "world"
