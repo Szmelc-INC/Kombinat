@@ -20,6 +20,9 @@ import (
 // RuntimeFile records the live API address, relative to the root, for clients.
 const RuntimeFile = "var/run/api.json"
 
+// SecretsDir holds the API tokens, relative to the root; it is gitignored.
+const SecretsDir = "secrets"
+
 // Runtime is the content of RuntimeFile.
 type Runtime struct {
 	PID     int       `json:"pid"`
@@ -61,6 +64,26 @@ func (env *Env) serve(ctx context.Context, core *Core) int {
 		env.event(ctx, core, "core.api.port_fallback", fmt.Sprintf("port %d busy, serving on %d", want, port),
 			map[string]any{"configured": want, "port": port})
 	}
+	tokens, created, err := api.LoadTokens(filepath.Join(core.Config.Root, SecretsDir))
+	if err != nil {
+		ln.Close()
+		env.Errorf("%v", err)
+		return ExitError
+	}
+	if created {
+		env.Okf("created %s/%s (mode 0600); API clients send it as a bearer token", SecretsDir, api.TokenFile)
+	}
+	srv := &http.Server{
+		Handler:           (&api.Server{Config: core.Config, Log: core.Log, Modules: core.Modules, Tokens: tokens}).Handler(port),
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	env.event(ctx, core, "core.api.start", fmt.Sprintf("API on %s:%d", api.Host, port),
+		map[string]any{"port": port, "actors": tokens.Actors()})
+	env.logInvalid(ctx, core)
+	if _, err := core.Modules.Boot(ctx, cliActor); err != nil {
+		env.Warnf("boot modules: %v", err)
+	}
+	// The runtime file is written last: once it exists, the server is ready.
 	rt := filepath.Join(core.Config.Root, RuntimeFile)
 	if err := writeRuntime(rt, Runtime{PID: os.Getpid(), Host: api.Host, Port: port, Started: time.Now().UTC()}); err != nil {
 		ln.Close()
@@ -68,16 +91,6 @@ func (env *Env) serve(ctx context.Context, core *Core) int {
 		return ExitError
 	}
 	defer os.Remove(rt)
-
-	srv := &http.Server{
-		Handler:           (&api.Server{Log: core.Log, Modules: core.Modules}).Handler(port),
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-	env.event(ctx, core, "core.api.start", fmt.Sprintf("API on %s:%d", api.Host, port), map[string]any{"port": port})
-	env.logInvalid(ctx, core)
-	if _, err := core.Modules.Boot(ctx, cliActor); err != nil {
-		env.Warnf("boot modules: %v", err)
-	}
 	fmt.Fprintf(env.Stderr, ":: serving http://%s:%d (Ctrl+C stops)\n", api.Host, port)
 
 	errc := make(chan error, 1)
