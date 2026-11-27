@@ -1,0 +1,92 @@
+# Memory 5 — exhaustive defaults.
+# Every key the code reads appears here (AGENTS.md: no hidden state); runtime values come from the core config store.
+# Standalone runs read this file too, then overlay the JSON in KOMBINAT_CONFIG when it is set.
+
+# boolean — whether the module is on before any `kombinat module enable` or `disable` ran.
+enabled = false
+
+[index]
+# string, default "" — absolute directory that relative `files` entries resolve against; while empty,
+# relative entries are skipped (never resolved against the working directory).
+base = ""
+# array of strings, default [] — files and directories to index, absolute or relative to `base`.
+# Directories are walked recursively. Anything listed becomes readable to whoever may run this module.
+files = []
+# array of strings, default ["md", "txt"] — file extensions (lowercase, without the dot) that are indexed.
+extensions = ["md", "txt"]
+# array of strings, default ["var", "node_modules", "vendor"] — directory names skipped while walking,
+# on top of the hard exclusions (`secrets`, every hidden directory) that config cannot lift.
+exclude_dirs = ["var", "node_modules", "vendor"]
+# integer, default 512 — files larger than this many KiB are skipped.
+max_file_kb = 512
+# integer, default 2000 — at most this many files are considered in one run; the rest are reported as capped.
+max_files = 2000
+# integer, default 1200 — target chunk size in bytes; a Markdown heading always starts a new chunk.
+chunk_bytes = 1200
+# integer, default 20 — an index run stops starting new work after this many seconds (the core kills runs
+# at runtime.timeout_seconds, 30 by default); the next run continues where this one stopped.
+budget_seconds = 20
+
+[redact]
+# boolean, default true — redact the value of `key = value` and `key: value` pairs whose key looks like a
+# secret (password, token, api key, credential, private key, auth).
+assignments = true
+# array of strings, default [] — extra PCRE patterns (without delimiters) whose matches are redacted,
+# on top of the built-in secret shapes. An invalid pattern stops the run with an error.
+patterns = []
+
+[search]
+# integer, default 10 — results returned when a query names no limit.
+limit = 10
+# integer, default 50 — the largest limit a query may ask for.
+max_limit = 50
+# integer, default 3 — query words shorter than this many characters are dropped (numbers are always kept).
+min_term_chars = 3
+# integer, default 6 — query words at least this long match as a prefix, so inflected forms still match.
+prefix_min_chars = 6
+# integer, default 2 — characters cut from the end of such a word before it is used as a prefix.
+prefix_trim_chars = 2
+# array of strings, default below — query words that are dropped because they match almost everything;
+# add the common words of every language the indexed files are written in.
+stopwords = ["the", "and", "for", "with", "that", "this", "from", "what", "are", "was", "not", "but"]
+# float, default 0.45 — a result found only by vectors needs at least this cosine similarity.
+min_similarity = 0.45
+# integer, default 60 — the k of reciprocal rank fusion: score = sum of 1 / (k + rank) over both rankings.
+rrf_k = 60
+# integer, default 50 — candidates each ranking (full-text and vectors) contributes before fusion.
+candidates = 50
+
+[embed]
+# boolean, default false — compute vectors; full-text search works without them.
+enabled = false
+# array of strings, default [] — argv of a local embedding command (no shell). It reads one JSON object
+# {"model": "...", "input": ["text", ...]} on stdin and prints {"embeddings": [[float, ...], ...]} on stdout.
+command = []
+# string, default "" — instead of `command`, a loopback HTTP endpoint with the same request and response
+# (an Ollama-style /api/embed URL such as http://127.0.0.1:11434/api/embed). Only 127.0.0.1, ::1 and localhost.
+url = ""
+# string, default "" — model name sent with every request and stored with every vector; changing it
+# recomputes vectors instead of mixing two models.
+model = ""
+# string, default "" — text put before every query (some embedding models expect an instruction); documents get none.
+query_prefix = ""
+# integer, default 16 — texts per embedding request during indexing.
+batch = 16
+# integer, default 20 — seconds one indexing request may take.
+timeout_seconds = 20
+# integer, default 3 — seconds the query embedding may take; after that the query answers from full text alone.
+query_timeout_seconds = 3
+
+[journal]
+# integer, default 16384 — the largest journal entry in bytes.
+max_bytes = 16384
+# string, default "" — IANA time zone that decides an entry's day; empty means the TZ environment variable, else UTC.
+timezone = ""
+
+[memory]
+# integer, default 4096 — the largest user memory in bytes.
+max_bytes = 4096
+
+[output]
+# string, default "en" — language of the data-not-instructions frame around results: "en" or "pl".
+locale = "en"
