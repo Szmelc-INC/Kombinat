@@ -1,0 +1,4 @@
+{
+  "module.hello.title": "Hello",
+  "module.hello.description": "The demo module: prints one greeting and proves the module contract end to end."
+}

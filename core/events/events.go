@@ -57,8 +57,9 @@ func ValidAction(action string) bool { return actionRe.MatchString(action) }
 // ErrInvalid marks an event rejected before it reached the backend.
 var ErrInvalid = errors.New("invalid event")
 
-// Append validates, redacts and stores e, and returns it with its id and time.
-func (l *Log) Append(ctx context.Context, e Event) (Event, error) {
+// Prepare validates and redacts e and stamps its time, without storing it;
+// callers that write state and event in one transaction use it.
+func (l *Log) Prepare(e Event) (Event, error) {
 	e.Actor = strings.TrimSpace(e.Actor)
 	if e.Actor == "" {
 		return Event{}, fmt.Errorf("%w: actor is required", ErrInvalid)
@@ -71,6 +72,15 @@ func (l *Log) Append(ctx context.Context, e Event) (Event, error) {
 	}
 	e.TS = l.now().UTC()
 	e.Payload = Redact(e.Payload)
+	return e, nil
+}
+
+// Append validates, redacts and stores e, and returns it with its id and time.
+func (l *Log) Append(ctx context.Context, e Event) (Event, error) {
+	e, err := l.Prepare(e)
+	if err != nil {
+		return Event{}, err
+	}
 	id, err := l.backend.InsertEvent(ctx, e)
 	if err != nil {
 		return Event{}, fmt.Errorf("append event: %w", err)

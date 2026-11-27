@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/Szmelc-INC/Kombinat/core/events"
+	"github.com/Szmelc-INC/Kombinat/core/modules"
 )
 
 // Host is the only address the API ever binds to.
@@ -25,7 +26,8 @@ const MaxBody = 1 << 20
 
 // Server serves the API for one Kombinat root.
 type Server struct {
-	Log *events.Log
+	Log     *events.Log
+	Modules *modules.Manager
 }
 
 // Handler returns the API handler for a server bound to port.
@@ -33,6 +35,7 @@ func (s *Server) Handler(port int) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/events", s.listEvents)
 	mux.HandleFunc("POST /api/events", s.addEvent)
+	mux.HandleFunc("GET /api/modules/{name}", s.getModule)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		Error(w, http.StatusNotFound, "no such route: "+r.Method+" "+r.URL.Path)
 	})
@@ -161,6 +164,27 @@ func (s *Server) addEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	JSON(w, http.StatusCreated, e)
+}
+
+// getModule answers a running module's description; a module that is
+// unknown, invalid, disabled or stopped answers 404 like any absent route.
+func (s *Server) getModule(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	m, running, err := s.Modules.Running(r.Context(), name)
+	if err != nil {
+		Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if !running {
+		Error(w, http.StatusNotFound, "module not running: "+name)
+		return
+	}
+	_, st, err := s.Modules.State(r.Context(), name)
+	if err != nil {
+		Error(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	JSON(w, http.StatusOK, modules.ViewOf(m, st))
 }
 
 // Listen binds 127.0.0.1:port. When the port is busy it binds a free port

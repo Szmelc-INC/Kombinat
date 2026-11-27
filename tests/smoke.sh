@@ -81,7 +81,7 @@ step "config: an invalid value exits 1 naming file and key"
 printf '[modules]\ndir = 5\n' >"$root/config/core.toml"
 expect 1 "$bin" config show
 [[ $err == *"config/core.toml: modules.dir: want string, got integer"* ]] || fail "error must name file and key: $err"
-rm "$root/config/core.toml"
+rm "$root/config/core.toml" "$root/config/hello.local.toml"
 
 step "event log: an action via the API, then log --tail 1 shows it"
 start_server
@@ -102,5 +102,42 @@ step "serve stops cleanly on SIGTERM and logs it"
 stop_server
 expect 0 "$bin" log --tail 1
 [[ $out == *"core.api.stop"* ]] || fail "stop not logged: $out"
+
+step "modules: the repo's hello module is discovered, valid and disabled by default"
+rm -rf "$root/modules/hello"
+cp -R modules/hello "$root/modules/hello"
+expect 0 "$bin" module check
+expect 0 "$bin" module ls
+[[ $out == *hello*0.1.0*disabled* ]] || fail "module ls: $out"
+
+step "an invalid manifest is skipped with its reason; the core stays up"
+mkdir -p "$root/modules/broken"
+printf '{"name": "broken"}\n' >"$root/modules/broken/module.json"
+expect 1 "$bin" module check
+[[ $err == *"broken"*"missing key"* ]] || fail "module check: $err"
+start_server
+expect 0 "$bin" log --tail 20
+[[ $out == *"core.module.invalid"*"broken"* ]] || fail "invalid module not logged: $out"
+
+step "enable: the module route answers its manifest; disable: 404 and the log says so"
+api GET /api/modules/hello
+[[ $status == 404 ]] || fail "disabled module route: $status $out"
+expect 0 "$bin" module enable hello
+api GET /api/modules/hello
+[[ $status == 200 && $(jq -r .data.manifest.name <<<"$out") == hello && $(jq -r .data.status <<<"$out") == running ]] || fail "enabled module route: $status $out"
+expect 0 "$bin" module stop hello
+api GET /api/modules/hello
+[[ $status == 404 ]] || fail "stopped module route: $status"
+expect 0 "$bin" module start hello
+expect 0 "$bin" module disable hello
+api GET /api/modules/hello
+[[ $status == 404 ]] || fail "disabled module route: $status $out"
+expect 0 "$bin" log --tail 1
+[[ $out == *"core.module.disable"*"hello"* ]] || fail "disable not logged: $out"
+expect 1 "$bin" module enable broken
+stop_server
+
+step "hello runs standalone"
+[[ $(sh modules/hello/src/cli.sh) == "Hello, world!" ]] || fail "hello standalone"
 
 printf '✓ smoke: all steps passed\n'

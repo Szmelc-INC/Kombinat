@@ -35,6 +35,13 @@ var migrations = []string{
 		BEGIN SELECT RAISE(ABORT, 'events are append-only'); END;
 	CREATE TRIGGER events_no_delete BEFORE DELETE ON events
 		BEGIN SELECT RAISE(ABORT, 'events are append-only'); END;`,
+	// 2: module lifecycle state set by enable, disable, start and stop.
+	`CREATE TABLE module_state (
+		name       TEXT PRIMARY KEY,
+		enabled    INTEGER NOT NULL,
+		running    INTEGER NOT NULL,
+		updated_at TEXT NOT NULL
+	);`,
 }
 
 // Open opens (creating when missing) the database at path and migrates it.

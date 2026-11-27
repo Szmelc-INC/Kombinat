@@ -18,10 +18,11 @@ _kombinat() {
     return
   fi
   case $p in
-    '') vals=('completion:Print the shell completion script (bash, zsh, fish)' 'config:Inspect the merged configuration' 'help:Show help for kombinat or one command' 'log:Show the event log, oldest first' 'serve:Serve the HTTP JSON API on 127.0.0.1 until interrupted' 'version:Print the core version') ;;
+    '') vals=('completion:Print the shell completion script (bash, zsh, fish)' 'config:Inspect the merged configuration' 'help:Show help for kombinat or one command' 'log:Show the event log, oldest first' 'module:List, check and run the lifecycle of modules' 'serve:Serve the HTTP JSON API on 127.0.0.1 until interrupted' 'version:Print the core version') ;;
     'completion') vals=('bash' 'zsh' 'fish') ;;
     'config') vals=('show:Print the merged config as JSON: core plus every module, or one of them') ;;
-    'help') vals=('completion' 'config' 'help' 'log' 'serve' 'version') ;;
+    'help') vals=('completion' 'config' 'help' 'log' 'module' 'serve' 'version') ;;
+    'module') vals=('check:Validate every module; exit 1 when any is invalid' 'disable:Stop a module and turn it off' 'enable:Turn a module on and start it' 'ls:List every module with its version and state' 'start:Start an enabled module that was stopped' 'stop:Stop a module without disabling it') ;;
   esac
   (( ${#vals} )) && _describe -t values 'kombinat' vals
 }

@@ -55,3 +55,18 @@ Every deviation from `AGENTS.md`, `docs/CONVENTIONS.md` or a `PROMPTS/` brief â€
 - Context: the CLI and the API must not grow two implementations of one action.
 - Decision: both call the same core packages (`config`, `store`, `events`, later the loader) on the same SQLite file; the CLI opens the store directly and works without a running server, WAL keeps CLI and server consistent. CLI actions log the actor `cli`, API actions `api` until phase 5 names token actors.
 - Consequence: `kombinat log` and `GET /api/events` always agree; a CLI-only command is a bug unless it is local plumbing (`serve`, `completion`, `help`, `version`).
+
+## 12. Module lifecycle semantics
+- Context: `PROMPTS/CORE.md` names the lifecycle `enable|disable|start|stop` without defining the four states; the template's `config.default.toml` carries `enabled = false` and says runtime values come from the core store.
+- Decision: `enable` turns a module on and starts it; `disable` stops it and turns it off; `stop` and `start` toggle only whether it runs, and `kombinat serve` starts every enabled module again at boot. The state lives in the `module_state` table, written in one transaction with its event; until the first lifecycle call, the module's `enabled` config key decides (`module ls` shows the source). Enabling needs every dependency enabled; disabling refuses while an enabled module depends on it. A call that changes nothing writes nothing.
+- Consequence: a module's routes are live only while it is valid, enabled and running; otherwise they answer 404 like an absent route.
+
+## 13. Entrypoint files and manifest validation
+- Context: the template's `entrypoints` are booleans (`api`, `cli`, `ui`, `worker`) and say nothing about files or languages.
+- Decision: a declared entrypoint is exactly one of `src/KIND.sh` (POSIX shell), `src/KIND.php` (PHP) or `src/KIND/main.go` (Go); a file for an undeclared kind is an error. The loader also requires strict manifest JSON with every key and no unknown one, a name equal to the directory, SemVer, `provides.api` and `provides.events` under the module's namespace, `provides.config` keys present in the defaults, the required files, a `SKILL.md` name equal to the module, and locales whose keys all start with `module.NAME.` and match across languages.
+- Consequence: `kombinat module check` (and a Go test over the repo's `modules/`) is the module lint; an invalid module is listed with its reasons, logged once per server start as `core.module.invalid`, and never enabled.
+
+## 14. Discovery at server start
+- Context: the server could rescan `modules/` on every request or once.
+- Decision: `kombinat serve` discovers modules once at start; lifecycle state is read from the store on every request, so CLI `enable`, `disable`, `start` and `stop` take effect on a running server at once.
+- Consequence: a newly added or edited module directory needs a server restart; reloading without a restart becomes the modules manager's job.

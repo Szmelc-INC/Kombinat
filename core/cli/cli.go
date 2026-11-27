@@ -73,6 +73,7 @@ func Root() *Command {
 		configCommand(),
 		helpCommand(),
 		logCommand(),
+		moduleCommand(),
 		serveCommand(),
 		versionCommand(),
 	}

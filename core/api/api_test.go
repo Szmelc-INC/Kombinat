@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/Szmelc-INC/Kombinat/core/events"
+	"github.com/Szmelc-INC/Kombinat/core/modules"
+	"github.com/Szmelc-INC/Kombinat/core/store"
 )
 
 type memBackend struct{ list []events.Event }
@@ -108,6 +110,28 @@ func TestRejections(t *testing.T) {
 		h.ServeHTTP(w, r)
 		if w.Code != c.want || !strings.Contains(w.Body.String(), `"ok":false`) {
 			t.Errorf("%s: %d %s, want %d", c.name, w.Code, w.Body.String(), c.want)
+		}
+	}
+}
+
+type memStates struct{}
+
+func (memStates) ModuleStates(context.Context) (map[string]store.ModuleState, error) {
+	return map[string]store.ModuleState{}, nil
+}
+
+func (memStates) SetModuleState(context.Context, store.ModuleState, events.Event) (int64, error) {
+	return 0, nil
+}
+
+func TestModuleRoute404sUnlessRunning(t *testing.T) {
+	off := &modules.Module{Name: "off", Manifest: &modules.Manifest{Name: "off"}, Config: map[string]any{"enabled": false}}
+	on := &modules.Module{Name: "on", Manifest: &modules.Manifest{Name: "on", Version: "0.1.0"}, Config: map[string]any{"enabled": true}}
+	h := (&Server{Log: events.New(&memBackend{}), Modules: &modules.Manager{Modules: []*modules.Module{off, on}, Store: memStates{}}}).Handler(port)
+	for name, want := range map[string]int{"off": http.StatusNotFound, "ghost": http.StatusNotFound, "on": http.StatusOK} {
+		code, env := do(t, h, "GET", "/api/modules/"+name, "", nil)
+		if code != want || env.OK != (want == http.StatusOK) {
+			t.Errorf("GET /api/modules/%s: %d %+v, want %d", name, code, env, want)
 		}
 	}
 }

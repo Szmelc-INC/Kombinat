@@ -70,10 +70,14 @@ func (env *Env) serve(ctx context.Context, core *Core) int {
 	defer os.Remove(rt)
 
 	srv := &http.Server{
-		Handler:           (&api.Server{Log: core.Log}).Handler(port),
+		Handler:           (&api.Server{Log: core.Log, Modules: core.Modules}).Handler(port),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	env.event(ctx, core, "core.api.start", fmt.Sprintf("API on %s:%d", api.Host, port), map[string]any{"port": port})
+	env.logInvalid(ctx, core)
+	if _, err := core.Modules.Boot(ctx, cliActor); err != nil {
+		env.Warnf("boot modules: %v", err)
+	}
 	fmt.Fprintf(env.Stderr, ":: serving http://%s:%d (Ctrl+C stops)\n", api.Host, port)
 
 	errc := make(chan error, 1)

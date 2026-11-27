@@ -73,6 +73,13 @@ type Registry struct {
 	// Problems lists module config errors; a module with a problem is left
 	// out of Modules, while the core and every other module stay usable.
 	Problems Errors
+	// ModuleProblems holds the same errors by module directory name.
+	ModuleProblems map[string]Errors
+}
+
+func (r *Registry) problem(name string, errs ...*Error) {
+	r.Problems = append(r.Problems, errs...)
+	r.ModuleProblems[name] = append(r.ModuleProblems[name], errs...)
 }
 
 // Load reads and validates the core config and every module config under root.
@@ -87,7 +94,7 @@ func Load(root string) (*Registry, error) {
 	if len(errs) > 0 {
 		return nil, errs
 	}
-	reg := &Registry{Root: root, Core: core, Modules: map[string]Table{}}
+	reg := &Registry{Root: root, Core: core, Modules: map[string]Table{}, ModuleProblems: map[string]Errors{}}
 
 	dir := String(core, "modules.dir")
 	entries, err := os.ReadDir(reg.Path(dir))
@@ -104,22 +111,22 @@ func Load(root string) (*Registry, error) {
 		name := e.Name()
 		rel := filepath.ToSlash(filepath.Join(dir, name, DefaultsFile))
 		if !ValidName(name) {
-			reg.Problems = append(reg.Problems, &Error{File: rel, Msg: "module directory name must be kebab-case and not \"core\""})
+			reg.problem(name, &Error{File: rel, Msg: "module directory name must be kebab-case and not \"core\""})
 			continue
 		}
 		data, err := os.ReadFile(reg.Path(filepath.Join(dir, name, DefaultsFile)))
 		if err != nil {
-			reg.Problems = append(reg.Problems, &Error{File: rel, Msg: "cannot read module defaults: " + errMsg(err)})
+			reg.problem(name, &Error{File: rel, Msg: "cannot read module defaults: " + errMsg(err)})
 			continue
 		}
 		defs, err := parse(rel, data)
 		if err != nil {
-			reg.Problems = append(reg.Problems, err.(*Error))
+			reg.problem(name, err.(*Error))
 			continue
 		}
 		merged, errs := overlay(root, name, defs, nil)
 		if len(errs) > 0 {
-			reg.Problems = append(reg.Problems, errs...)
+			reg.problem(name, errs...)
 			continue
 		}
 		reg.Modules[name] = merged

@@ -13,10 +13,11 @@ _kombinat() {
     words+=" --json --no-color --help"
   else
     case $p in
-      "") words="completion config help log serve version" ;;
+      "") words="completion config help log module serve version" ;;
       "completion") words="bash zsh fish" ;;
       "config") words="show" ;;
-      "help") words="completion config help log serve version" ;;
+      "help") words="completion config help log module serve version" ;;
+      "module") words="check disable enable ls start stop" ;;
     esac
   fi
   mapfile -t COMPREPLY < <(compgen -W "$words" -- "$cur")
